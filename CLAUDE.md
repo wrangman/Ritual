@@ -5,6 +5,7 @@
 - Sluta ge snabblösningar. Ge alltid bästa praxis och absolut bästa OOP.
 - Basera designförslag på etablerade källor (designmönster, hur riktiga kortspelsmotorer är byggda) och ange källorna. Gissa inte. Skilj tydligt på vad källan faktiskt säger och vad som är din egen tillämpning på projektet.
 - Tänk igenom ansvarsfördelning och relationer mellan klasser innan du föreslår kod. Fråga om designbeslut hellre än att gissa.
+- Spelinnehåll (kortnamn, specialtexter m.m.) och kod skrivs på engelska.
 - Arv bara när beteendet faktiskt skiljer sig. Sammansättning (en spelare *har* en lek, en lek *innehåller* kort) är lika viktig som arv.
 
 ## Vad vi bygger
