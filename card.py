@@ -1,7 +1,7 @@
-
+#TODO: Image!!
 
 class Card:
-   def __init__(self, faction=None, name="Unknown", attack=0, armor=0, magic=0, ritual=0, special=None, rarity="Common"):
+   def __init__(self, faction=None, name="Untitled", attack=0, armor=0, magic=0, ritual=0, special=None, rarity="Common"):
       self.faction = faction
       self.name = name
       self.attack = attack
@@ -10,7 +10,6 @@ class Card:
       self.ritual = ritual
       self.special = special
       self.rarity = rarity
-      
       
    def __str__(self):
       return f"{self.faction or '–'} - {self.name}; [ ⚔️ {self.attack}, 🛡️ {self.armor}, 🪄 {self.magic}, ☩ {self.ritual}], SPC: {self.special or '–'}, RAR: {self.rarity}"
@@ -22,8 +21,10 @@ class Card:
 
    def short(self):
       return f"{self.name} [⚔️{self.attack} 🛡️{self.armor} 🪄{self.magic} ☩{self.ritual}]"
+   
+   
+   #Get methods
 
-   # --- Getters ---
    def get_faction(self):
       return self.faction
 
@@ -47,8 +48,9 @@ class Card:
 
    def get_rarity(self):
       return self.rarity
+   
 
-   # --- Setters ---
+   # Set methods
    def set_faction(self, faction):
       self.faction = faction
 
