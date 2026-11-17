@@ -1,7 +1,7 @@
 # Allt som har med terminalen att göra: färger och utskrift.
 # Korten vet inget om färger. De vet bara vad de är, och här bestäms hur de ser ut.
 
-from card import SpellCard
+from card import SpellCard, FactionName
 
 
 RESET = "\033[0m"   # tillbaka till terminalens vanliga färg
@@ -16,10 +16,10 @@ def rgb(red, green, blue):
 
 # Fraktion -> (färg för figurer, färg för spells)
 FACTION_COLORS = {
-   "Ghouls":        (rgb(150, 0, 0),   rgb(230, 60, 80)),    # mörkröd, ljusare blodröd
-   "The Academics": (rgb(40, 90, 210), rgb(120, 180, 255)),  # blå, ljusblå
-   "Shoggoths":     (rgb(200, 150, 0), rgb(255, 215, 80)),   # gyllengul, ljus guld
-   "The Deep Ones": (rgb(20, 130, 60), rgb(100, 220, 150)),  # grön, ljusgrön
+   FactionName.GHOULS:    (rgb(150, 0, 0),   rgb(230, 60, 80)),    # mörkröd, ljusare blodröd
+   FactionName.ACADEMICS: (rgb(40, 90, 210), rgb(120, 180, 255)),  # blå, ljusblå
+   FactionName.SHOGGOTHS: (rgb(200, 150, 0), rgb(255, 215, 80)),   # gyllengul, ljus guld
+   FactionName.DEEP_ONES: (rgb(20, 130, 60), rgb(100, 220, 150)),  # grön, ljusgrön
 }
 
 
@@ -52,4 +52,12 @@ def show_army(player):
    lines = []
    for index, card in enumerate(player.get_army()):
       lines.append(f"{LETTERS[index]}. {colored(card)}")
-   return "\n".join(lines)
+   return " | ".join(lines)
+
+
+# Visar spelarens döda hög i färg, med | mellan korten
+def show_graveyard(player):
+   lines = []
+   for card in player.get_graveyard():
+      lines.append(colored(card))
+   return " | ".join(lines)

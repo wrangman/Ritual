@@ -3,6 +3,14 @@
 from enum import Enum
 
 
+# Vilken fraktion ett kort tillhör. Namnet används i koden, värdet är texten som visas för spelaren.
+class FactionName(Enum):
+   GHOULS = "Ghouls"
+   ACADEMICS = "The Academics"
+   SHOGGOTHS = "Shoggoths"
+   DEEP_ONES = "The Deep Ones"
+
+
 class Rarity(Enum):
    COMMON = "Common"
    UNCOMMON = "Uncommon"
@@ -134,8 +142,8 @@ class CreatureCard(Card):
       self.health = health
 
    def __str__(self):
-      return (f"{self.faction or '–'} - {self.name}; {self.attack_name or '–'}; "
-              f"[ ⚔️ {self.attack}, 🪄 {self.magic}, ❤️ {self.health}, 🛡️ {self.armor}, ☩ {self.ritual}], "
+      return (f"{self.faction.value if self.faction else '–'} - {self.name}; {self.attack_name or '–'}; "
+              f"[ ⚔️ {self.attack}, 🪄 {self.magic}, ❤️ {self.health}, 🛡️ {self.armor}, ☩{self.ritual}], "
               f"SPC: {self.special.value if self.special else '–'}, RAR: {self.rarity.value}")
 
    def __repr__(self):
@@ -209,7 +217,7 @@ class RitualCard(CreatureCard):
                        armor=armor, magic=magic, health=health, ritual=ritual, special=special, rarity=rarity)
 
    def __str__(self):
-      return (f"{self.faction or '–'} - {self.name} (Ritual); "
+      return (f"{self.faction.value if self.faction else '–'} - {self.name} (Ritual); "
               f"[ 🪄 {self.magic}, ❤️ {self.health}, 🛡️ {self.armor}, ☩ {self.ritual}], "
               f"SPC: {self.special.value if self.special else '–'}, RAR: {self.rarity.value}")
 
@@ -242,7 +250,7 @@ class SpellCard(Card):
       self.magic = magic
 
    def __str__(self):
-      return (f"{self.faction or '–'} - {self.name} (Spell); "
+      return (f"{self.faction.value if self.faction else '–'} - {self.name} (Spell); "
               f"[ 🪄 {self.magic}, ☩ {self.ritual}], "
               f"SPC: {self.special.value if self.special else '–'}, RAR: {self.rarity.value}")
 

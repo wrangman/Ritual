@@ -13,6 +13,6 @@ game.start()
 
 game.play_turn(player1)
 
-print("Army:", [card.short() for card in player1.get_army()])
-print("Graveyard:", [card.short() for card in player1.get_graveyard()])
+print("Army:", terminal_ui.show_armfy(player1))
+print("Graveyard:", terminal_ui.show_graveyard(player1))
 

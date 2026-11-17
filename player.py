@@ -15,7 +15,7 @@ class Player:
       self.graveyard = []   # döda; kastade kort
 
    def __str__(self):
-      return (f"{self.name} ({self.faction.get_name()}) – "
+      return (f"{self.name} ({self.faction.get_name().value}) – "
               f"☩ {self.ritual_points}/{self.faction.get_ritual_goal()}, "
               f"hand: {len(self.hand)}, lek: {len(self.deck)}")
 
@@ -131,7 +131,7 @@ class Player:
       return list(self.hand)   # kopia, så att handen bara ändras via Player
 
    def get_army(self):
-      return list(self.army)   # kopia, så att armén bara ändras via Player
+      return list(self.army)  # kopia, så att armén bara ändras via Player
 
    def get_graveyard(self):
       return list(self.graveyard)   # kopia, så att döda högen bara ändras via Player

@@ -20,7 +20,7 @@ class Faction:
       return self.name
    
    def get_ritual_goal(self):
-      return self.get_ritual_goal
+      return self.ritual_goal
    
    def create_cards(self):
       return [copy.copy(card) for card in self.cards]
