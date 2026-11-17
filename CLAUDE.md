@@ -33,16 +33,18 @@ Varje fraktion har sin egen hjälte, sina egna kort och sina egna skills/förmå
 - **Ghouls**: hjälte Morrigan Upton. Kyrkogård: blir starkare när pjäser dör, kan äta kort i gravhögen och stjäla deras stats och förmågor.
 - **Shoggoths**: hjälte Ur-Shoggothen. Ramp och absorption: dyra, enorma monster som växer och absorberar närliggande pjäser.
 - **The Academics**: hjälte Dr. Henry Armitage. Spells och kunskap: drar mycket kort, Discover via förbjudna böcker, tar skada eller tappar förstånd av stark magi.
+  - Academics identitet är att skydda: deras förmågor ska hålla de sköra figurerna och ritualkorten vid liv. Ghouls tål mycket på brädet, Academics överlever genom magi.
+  - Armitages hjälteförmåga ska vara **The Eleventh Seal**: "Your ritual cards cannot be damaged until your next turn, but all your other cards take 2 damage." Namnet bygger på talet 11 i anti-kosmisk satanism, där 11 är porten ut ur kosmos till urkaoset. Inte byggt än, eftersom hjältar inte finns i koden.
 
 ### Card (`card.py`)
 
-Tre klasser, eftersom figurer och spells beter sig olika (figurer stannar på brädet, spells används en gång):
+Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer stannar på brädet, spells används en gång):
 
 - `Card` är grundklassen med det som alla kort har: `faction`, `name`, `ritual`, `special`, `rarity`. Den skapas inte direkt; `short()` kastar `NotImplementedError`.
-- `CreatureCard(Card)` är en figur på brädet. Den lägger till `attack_name`, `attack_type`, `attack`, `armor`, `magic` och `health`.
+- `CreatureCard(Card)` är en figur på brädet. Den lägger till `attack_name`, `attack`, `armor`, `magic` och `health`.
+- `RitualCard(CreatureCard)` är ett ritualkort som inte kan anfalla, se Ritual.
 - `SpellCard(Card)` är en spell som spelas från handen. Den lägger bara till `magic` (spellens styrka). `special` beskriver vad den gör.
 - Alla tre har getters och setters för sina fält. Det är medvetet: kort påverkar varandras stats under spelet, och en magiker ska i framtiden kunna trolla fram påhittade kort, till exempel ett spöke av ett annat kort.
-- `AttackType` är en Enum i `card.py` (MELEE, MAGIC). Flyttas till egen fil om fler moduler börjar använda den.
 - `Rarity` är en Enum i `card.py` (COMMON, UNCOMMON, RARE, EPIC, LEGENDARY). Standard är `Rarity.COMMON`.
 - `Special` är en Enum i `card.py`. Namnet (t.ex. `DEVOUR`) säger vilken förmåga det är, värdet är texten spelaren ser. `special=None` betyder ingen förmåga.
 - `__str__` ger full visning med ikoner: ⚔️ attack, 🪄 magic, ❤️ health, 🛡️ armor, ☩ ritual.
@@ -57,19 +59,22 @@ Tre klasser, eftersom figurer och spells beter sig olika (figurer stannar på br
 
 ### Strid (bestämt)
 
-- Varje kort har en `attack_type` som avgör vilket värde det anfaller med.
-  - MELEE: skada = ⚔️ attack − målets 🛡️ armor.
-  - MAGIC: skada = 🪄 magic − målets 🪄 magic.
+- Korttypen avgör hur ett kort gör skada:
+  - Figurer (`CreatureCard`): skada = ⚔️ attack − målets 🛡️ armor.
+  - Spells (`SpellCard`): skada = 🪄 magic − målets 🪄 magic.
 - Skadan är minst 0 och dras från målets ❤️ health. Kortet dör vid 0.
-- `magic` är alltså både anfall (för MAGIC-kort) och försvar mot magi (för alla kort).
-- Exempel: Academic Apprentice slåss med svärd (MELEE), Master kastar spells från brädet (MAGIC, ⚔️0).
-- Inspirerat av Magic the Gathering (t.ex. Prodigal Sorcerer, en figur som skjuter magi från brädet), inte Hearthstone, där all skada är av samma sort.
+- `magic` är alltså både spellens styrka och figurernas försvar mot magi.
+- I koden räknar varje klass ut sin egen skada med `damage_against(target)` (polymorfism). Spelet frågar bara kortet och behöver inte kolla vilken sorts kort det är.
+- Det finns inget `attack_type`-fält. Det togs bort för att klassen redan avgör sortens skada (YAGNI).
+- The Academics: alla deras figurer är ganska svaga. De har svårt mot till exempel Ghouls i tier 2–3, som har hög armor. Academics styrka är spells: magisk skada räknas mot målets 🪄 magic, inte mot 🛡️ armor, så spells går igenom armor.
 
 ### Spellkort (bestämt)
 
 - Spells spelas som i Hearthstone: välj kortet från handen, välj mål, och effekten sker direkt. Kortet hamnar aldrig på brädet.
 - Man kan ångra medan man väljer (kort eller mål). När man har bekräftat är spellen kastad och kan inte tas tillbaka.
 - Exempel: tier 5 hos Ghouls (Resurrect, Plague, Infect, Ruin m.fl.).
+- **Tung dark magic kostar health.** Academics tyngsta spells skadar de egna korten i stället för att använda en egen stat för förstånd. Exempel: Necronomicon gör 3 skada på ett av de egna korten.
+- **Utan eget kort på brädet fungerar inte tung magi.** Man får fortfarande spela spellen, men den gör ingenting. Spelet ska varna innan man bekräftar. Detta är inte byggt än.
 
 ### Ritual (bestämt)
 

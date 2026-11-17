@@ -17,14 +17,6 @@ class Player:
               f"☩ {self.ritual_points}/{self.faction.get_ritual_goal()}, "
               f"hand: {len(self.hand)}, lek: {len(self.deck)}")
 
-   # Visar handen som en numrerad lista, en rad per kort.
-   # Returnerar en sträng (som Card.short()), så bestämmer den som anropar om den ska skrivas ut.
-   def show_hand(self):
-      lines = []
-      for number, card in enumerate(self.hand, start=1):
-         lines.append(f"{number}. {card.short()}")
-      return "\n".join(lines)
-
    # Handlingar
    # Drar kort från leken till handen. Returnerar de dragna korten,
    # som kan vara färre än amount om leken tar slut.
