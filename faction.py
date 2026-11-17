@@ -1,3 +1,13 @@
+"""
+A faction: its name, hero, ritual goal and the cards it plays with.
+
+create_cards() gives each player their own copies of the faction's cards.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
 import copy
 
 

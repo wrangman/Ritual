@@ -1,3 +1,15 @@
+"""
+Cards in Ritual and the enums that describe them.
+
+Card is the base class. CreatureCard is placed on the board and fights,
+RitualCard builds ritual but cannot attack, and SpellCard is played from
+the hand and goes straight to the graveyard.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
 #TODO: Image!!
 
 from enum import Enum

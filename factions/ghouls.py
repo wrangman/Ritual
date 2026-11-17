@@ -1,3 +1,14 @@
+"""
+The Ghouls faction: their cards and the faction object.
+
+Hero: Morrigan Upton. Tough creatures that grow stronger when cards die,
+and spells that work through the graveyard.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
 import copy
 from faction import Faction
 from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionName
@@ -307,4 +318,4 @@ for card in tier_1 + tier_2 + tier_3:
 ghoul_cards += ritual_cards
 ghoul_cards += spell_cards
 
-ghouls = Faction(FactionName.GHOULS, "Morrigan Upton", ritual_goal=30, cards=ghoul_cards)
+ghouls = Faction(FactionName.GHOULS, "Morrigan Upton", ritual_goal=15, cards=ghoul_cards)

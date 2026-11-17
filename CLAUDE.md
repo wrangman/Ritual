@@ -2,6 +2,7 @@
 
 ## Arbetssätt
 
+- Användaren skriver koden själv. Beskriv steg för steg vad som ska byggas, ett steg i taget, och skriv inte koden åt hen. Hjälp till med kod bara när hen ber om det.
 - Sluta ge snabblösningar. Ge alltid bästa praxis och absolut bästa OOP.
 - Basera designförslag på etablerade källor (designmönster, hur riktiga kortspelsmotorer är byggda) och ange källorna. Gissa inte. Skilj tydligt på vad källan faktiskt säger och vad som är din egen tillämpning på projektet.
 - Tänk igenom ansvarsfördelning och relationer mellan klasser innan du föreslår kod. Fråga om designbeslut hellre än att gissa.
@@ -12,14 +13,17 @@
 
 Ett Lovecraft-inspirerat kortspel i Python (kursen Prog2), spelat i terminalen.
 
-Spelare har ingen hälsa. Det som räknas heter ritual: varje fraktion har ett ritualmål, och spelaren samlar ritualpoäng mot det. Motståndaren kan sinka (sänka) ens ritual.
+Hjälten är den som utför ritualen. Den har två mätare: ❤️ hälsa (30) och ☩ ritual (mål preliminärt 15, ska provas i spel). Båda ska hållas så höga som möjligt. Motståndaren kan störa på två sätt: sänka ens ritual eller skada hjälten.
 
-Strategin är att balansera: försvara sin ritual, öka den, och ha både försvarande och anfallande kort.
+Två vägar till seger: bygg klart sin ritual, eller ta sig förbi motståndarens armé och slå ut hjälten (som Hearthstone, Taunt skyddar). När motståndarens bräde är tomt anfaller man hjälten. Inspiration: Android: Netrunner (agenda points eller flatline) och Hearthstone (hjälte med hälsa, Taunt).
+
+Strategin är att balansera: försvara sin ritual och sin hjälte, öka ritualen, och ha både försvarande och anfallande kort.
 
 **Vinstvillkor** (man vinner om något av dessa gäller):
 1. Man når sitt ritualmål.
-2. Motståndaren är utplånad: inga kort på brädet och inga kort kvar (varken i hand eller lek).
-3. Man har byggt upp mer ritual än motståndaren.
+2. Motståndarens hjälte har 0 hälsa.
+3. Motståndaren är utplånad: inga kort på brädet och inga kort kvar (varken i hand eller lek). *Oklart om detta ska finnas kvar.*
+4. Man har byggt upp mer ritual än motståndaren. *Oklart om detta ska finnas kvar.*
 
 Man vinner INTE genom att motståndaren har noll ritual.
 

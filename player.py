@@ -1,3 +1,14 @@
+"""
+A player: their faction, deck, hand, army on the board and graveyard.
+
+Player moves cards between these places and asks the person at the
+terminal what to do on their turn.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
 import terminal_ui
 from card import SpellCard
 from deck import Deck

@@ -1,3 +1,13 @@
+"""
+A player's deck: draw, shuffle and put cards back.
+
+The top of the deck is the end of the list.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
 import random
 
 

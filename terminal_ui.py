@@ -1,3 +1,13 @@
+"""
+Everything to do with the terminal: colors and output.
+
+The cards know nothing about colors. This module decides how they look.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
 # Allt som har med terminalen att göra: färger och utskrift.
 # Korten vet inget om färger. De vet bara vad de är, och här bestäms hur de ser ut.
 

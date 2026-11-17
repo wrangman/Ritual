@@ -1,3 +1,14 @@
+"""
+The Academics faction: their cards and the faction object.
+
+Hero: Dr. Henry Armitage. Few, magic creatures that are weak in melee.
+Their strength is spells from forbidden books.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
 import copy
 from faction import Faction
 from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionName
@@ -288,4 +299,4 @@ for card in tier_2 + tier_3 + basic_spells:
 academic_cards += ritual_cards
 academic_cards += spell_cards
 
-academics = Faction(FactionName.ACADEMICS, "Dr. Henry Armitage", ritual_goal=30, cards=academic_cards)
+academics = Faction(FactionName.ACADEMICS, "Dr. Henry Armitage", ritual_goal=15, cards=academic_cards)

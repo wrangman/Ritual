@@ -1,3 +1,13 @@
+"""
+Entry point for Ritual, a Lovecraft-inspired card game played in the terminal... for now!
+
+Creates two players with their factions and starts the game.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
 from game import Game
 import terminal_ui
 from player import Player

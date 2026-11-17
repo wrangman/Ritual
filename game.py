@@ -1,3 +1,12 @@
+"""
+The game itself: starts a match between two players and runs their turns.
+"""
+
+__author__ = "Johan Wrangö"
+__version__ = "0.0.1"
+__email__ = "johan.wrango@ga.dbgy.se"
+
+
 class Game:
    def __init__(self, player1, player2):
       self.player1 = player1
