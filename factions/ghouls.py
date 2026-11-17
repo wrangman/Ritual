@@ -1,52 +1,326 @@
 import copy
 
-from card import Card
+from card import CreatureCard, RitualCard, SpellCard, AttackType, Rarity, Special
 from faction import Faction
 
 
-EAT_DEAD = "Devours dead cards to gain their stats"
-
 # Tier 1: low stats, no ritual (6 cards x 2 copies = 12)
 tier_1 = [
-   Card("Ghouls", "Corpse Looter",              attack=2, armor=1, magic=0, ritual=0, special=EAT_DEAD, rarity="Common"),
-   Card("Ghouls", "Gravedigger",                attack=1, armor=2, magic=0, ritual=0, special=EAT_DEAD, rarity="Common"),
-   Card("Ghouls", "Changeling Child",           attack=1, armor=1, magic=0, ritual=0, special=EAT_DEAD, rarity="Common"),
-   Card("Ghouls", "Tunnel Scavenger",           attack=2, armor=2, magic=0, ritual=0, special=EAT_DEAD, rarity="Common"),
-   Card("Ghouls", "Bone Gnawer",                attack=2, armor=1, magic=0, ritual=0, special=EAT_DEAD, rarity="Common"),
-   Card("Ghouls", "Mourner in Black",           attack=1, armor=2, magic=0, ritual=1, special=EAT_DEAD, rarity="Common"),
+   CreatureCard("Ghouls", "Corpse Looter",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=2,
+                armor=1,
+                magic=0,
+                health=2,
+                ritual=0,
+                special=None,
+                rarity=Rarity.COMMON),
+
+   CreatureCard("Ghouls", "Gravedigger",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=1,
+                armor=2,
+                magic=0,
+                health=1,
+                ritual=0,
+                special=None,
+                rarity=Rarity.COMMON),
+
+   CreatureCard("Ghouls", "Changeling Child",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=1,
+                armor=1,
+                magic=0,
+                health=1,
+                ritual=0,
+                special=None,
+                rarity=Rarity.COMMON),
+
+   CreatureCard("Ghouls", "Tunnel Scavenger",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=2,
+                armor=2,
+                magic=0,
+                health=2,
+                ritual=0,
+                special=None,
+                rarity=Rarity.COMMON),
+
+   CreatureCard("Ghouls", "Bone Gnawer",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=2,
+                armor=1,
+                magic=0,
+                health=3,
+                ritual=0,
+                special=Special.DEVOUR,
+                rarity=Rarity.COMMON),
+
+   CreatureCard("Ghouls", "Mourner in Black",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=1,
+                armor=2,
+                magic=0,
+                health=2,
+                ritual=1,
+                special=None,
+                rarity=Rarity.COMMON),
 ]
 
 # Tier 2: medium stats, ritual max 2 (5 cards x 2 copies = 10)
 tier_2 = [
-   Card("Ghouls", "Grave Eater",                attack=3, armor=3, magic=0, ritual=0, special=EAT_DEAD, rarity="Rare"),
-   Card("Ghouls", "Crypt Warden",               attack=3, armor=4, magic=0, ritual=0, special=EAT_DEAD, rarity="Rare"),
-   Card("Ghouls", "Ossuary Keeper",             attack=4, armor=3, magic=0, ritual=0, special=EAT_DEAD, rarity="Rare"),
-   Card("Ghouls", "Hollow-Eyed Stalker",        attack=4, armor=4, magic=0, ritual=1, special=EAT_DEAD, rarity="Rare"),
-   Card("Ghouls", "Charnel Priest",             attack=3, armor=3, magic=1, ritual=1, special=EAT_DEAD, rarity="Rare"),
+   CreatureCard("Ghouls", "Grave Eater",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=3,
+                armor=3,
+                magic=0,
+                health=2,
+                ritual=0,
+                special=Special.DEVOUR,
+                rarity=Rarity.RARE),
+
+   CreatureCard("Ghouls", "Crypt Warden",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=3,
+                armor=4,
+                magic=0,
+                health=2,
+                ritual=0,
+                special=None,
+                rarity=Rarity.RARE),
+
+   CreatureCard("Ghouls", "Ossuary Keeper",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=4,
+                armor=3,
+                magic=0,
+                health=3,
+                ritual=0,
+                special=None,
+                rarity=Rarity.RARE),
+
+   CreatureCard("Ghouls", "Hollow-Eyed Stalker",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=4,
+                armor=4,
+                magic=0,
+                health=3,
+                ritual=1,
+                special=Special.DEVOUR,
+                rarity=Rarity.RARE),
+
+   CreatureCard("Ghouls", "Charnel Priest",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=3,
+                armor=3,
+                magic=1,
+                health=2,
+                ritual=1,
+                special=Special.DEVOUR,
+                rarity=Rarity.RARE),
 ]
 
 # Tier 3: high stats, ritual max 3 (4 cards x 2 copies = 8)
 tier_3 = [
-   Card("Ghouls", "Bone Crusher",               attack=6, armor=4, magic=0, ritual=1, special=EAT_DEAD, rarity="Epic"),
-   Card("Ghouls", "Butcher of the Underworld",  attack=5, armor=5, magic=1, ritual=1, special=EAT_DEAD, rarity="Epic"),
-   Card("Ghouls", "Elder Ghoul",                attack=6, armor=5, magic=0, ritual=3, special=EAT_DEAD, rarity="Epic"),
-   Card("Ghouls", "Catacomb Tyrant",            attack=5, armor=6, magic=0, ritual=1, special=EAT_DEAD, rarity="Epic"),
+   CreatureCard("Ghouls", "Bone Crusher",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=6,
+                armor=4,
+                magic=0,
+                health=4,
+                ritual=1,
+                special=Special.TAUNT,
+                rarity=Rarity.EPIC),
+
+   CreatureCard("Ghouls", "Butcher of the Underworld",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=5,
+                armor=5,
+                magic=1,
+                health=8,
+                ritual=1,
+                special=Special.DEVOUR,
+                rarity=Rarity.EPIC),
+
+   CreatureCard("Ghouls", "Elder Ghoul",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=6,
+                armor=5,
+                magic=0,
+                health=6,
+                ritual=3,
+                special=Special.TAUNT,
+                rarity=Rarity.EPIC),
+
+   CreatureCard("Ghouls", "Catacomb Tyrant",
+                attack_name=None,
+                attack_type=AttackType.MELEE,
+                attack=5,
+                armor=6,
+                magic=0,
+                health=6,
+                ritual=1,
+                special=Special.DEVOUR,
+                rarity=Rarity.EPIC),
 ]
 
 # Tier 4: ritual builders only (5 cards x 1 copy = 5)
 tier_4 = [
-   Card("Ghouls", "Choir of the Corpse-Eaters", attack=0, armor=0, magic=0, ritual=4, rarity="Legendary"),
-   Card("Ghouls", "The Forbidden Painting",     attack=0, armor=0, magic=0, ritual=5, rarity="Legendary"),
-   Card("Ghouls", "Feast of the Dead",          attack=0, armor=0, magic=0, ritual=4, rarity="Legendary"),
-   Card("Ghouls", "Midnight Exhumation",        attack=0, armor=0, magic=0, ritual=4, rarity="Legendary"),
-   Card("Ghouls", "Altar of Bones",             attack=0, armor=0, magic=0, ritual=5, rarity="Legendary"),
+   RitualCard("Ghouls", "Choir of the Corpse-Eaters",
+              armor=0,
+              magic=0,
+              health=0,
+              ritual=4,
+              special=None,
+              rarity=Rarity.LEGENDARY),
+
+   RitualCard("Ghouls", "The Forbidden Painting",
+              armor=0,
+              magic=0,
+              health=0,
+              ritual=5,
+              special=None,
+              rarity=Rarity.LEGENDARY),
+
+   RitualCard("Ghouls", "Feast of the Dead",
+              armor=0,
+              magic=0,
+              health=0,
+              ritual=4,
+              special=None,
+              rarity=Rarity.LEGENDARY),
+
+   RitualCard("Ghouls", "Midnight Exhumation",
+              armor=0,
+              magic=0,
+              health=0,
+              ritual=4,
+              special=None,
+              rarity=Rarity.LEGENDARY),
+
+   RitualCard("Ghouls", "Altar of Bones",
+              armor=0,
+              magic=0,
+              health=0,
+              ritual=5,
+              special=None,
+              rarity=Rarity.LEGENDARY),
 ]
 
-# Tier 1-3: two copies of each card. Tier 4: one copy each. Total 35 cards.
+# Tier 5: dark magic spells (15 cards x 1 copy = 15)
+tier_5 = [
+   SpellCard("Ghouls", "Resurrect",
+             magic=0,
+             ritual=0,
+             special=Special.RESURRECT,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Plague",
+             magic=0,
+             ritual=0,
+             special=Special.PLAGUE,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Infect",
+             magic=0,
+             ritual=0,
+             special=Special.INFECT,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Ruin",
+             magic=0,
+             ritual=0,
+             special=Special.RUIN,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Necrotic Bolt",
+             magic=0,
+             ritual=0,
+             special=Special.NECROTIC_BOLT,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Drain Life",
+             magic=0,
+             ritual=0,
+             special=Special.DRAIN_LIFE,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Wither",
+             magic=0,
+             ritual=0,
+             special=Special.WITHER,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Terror",
+             magic=0,
+             ritual=0,
+             special=Special.TERROR,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Bone Ward",
+             magic=0,
+             ritual=0,
+             special=Special.BONE_WARD,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Soul Siphon",
+             magic=0,
+             ritual=0,
+             special=Special.SOUL_SIPHON,
+             rarity=Rarity.RARE),
+
+   # Spells that protect ritual
+   SpellCard("Ghouls", "Veil of Tiamat",
+             magic=0,
+             ritual=0,
+             special=Special.VEIL_OF_TIAMAT,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Scales of Leviathan",
+             magic=0,
+             ritual=0,
+             special=Special.SCALES_OF_LEVIATHAN,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Seal of Apep",
+             magic=0,
+             ritual=0,
+             special=Special.SEAL_OF_APEP,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Kiss of Lilith",
+             magic=0,
+             ritual=0,
+             special=Special.KISS_OF_LILITH,
+             rarity=Rarity.RARE),
+
+   SpellCard("Ghouls", "Curse of Choronzon",
+             magic=0,
+             ritual=0,
+             special=Special.CURSE_OF_CHORONZON,
+             rarity=Rarity.RARE),
+]
+
+# Tier 1-3: two copies of each card. Tier 4 and 5: one copy each. Total 50 cards.
 ghoul_cards = []
 for card in tier_1 + tier_2 + tier_3:
    ghoul_cards.append(card)
    ghoul_cards.append(copy.copy(card))
 ghoul_cards += tier_4
+ghoul_cards += tier_5
 
 ghouls = Faction("Ghouls", "Morrigan Upton", ritual_goal=30, cards=ghoul_cards)

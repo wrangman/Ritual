@@ -17,13 +17,21 @@ class Player:
               f"☩ {self.ritual_points}/{self.faction.get_ritual_goal()}, "
               f"hand: {len(self.hand)}, lek: {len(self.deck)}")
 
+   # Visar handen som en numrerad lista, en rad per kort.
+   # Returnerar en sträng (som Card.short()), så bestämmer den som anropar om den ska skrivas ut.
+   def show_hand(self):
+      lines = []
+      for number, card in enumerate(self.hand, start=1):
+         lines.append(f"{number}. {card.short()}")
+      return "\n".join(lines)
+
    # Handlingar
-   def draw_card(self):
-      card = self.deck.draw()
-      if card is not None:
-         return None #FIXME:  just for testing
-         # self.hand.append(card)
-      return card
+   # Drar kort från leken till handen. Returnerar de dragna korten,
+   # som kan vara färre än amount om leken tar slut.
+   def draw_cards(self, amount=1):
+      drawn = self.deck.draw(amount)
+      self.hand.extend(drawn)
+      return drawn
 
    # Flyttar ett kort från handen till armén
    def play_card(self, card):
@@ -50,9 +58,10 @@ class Player:
       self.army.append(card)
       
    # Mulligan: "jag vill inte ha det här kortet". Ett nytt kort dras, det gamla läggs sist i leken.
+   #FIXME: kanske ska blanda kortlekn?
    def mulligan(self, card):
       self.hand.remove(card)
-      self.draw_card()
+      self.draw_cards()
       self.deck.put_on_bottom(card)
       
    # Vinstvillkor som gäller spelaren själv.

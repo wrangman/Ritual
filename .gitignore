@@ -1,0 +1,40 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtuella miljöer
+.venv/
+venv/
+env/
+ENV/
+
+# Paketering / byggen (t.ex. PyInstaller för att göra en .exe av pygame-spelet)
+build/
+dist/
+*.egg-info/
+*.spec
+
+# Tester och verktyg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Hemligheter / lokala inställningar
+.env
+
+# --- Spel (pygame-ce) ---
+# Sparfiler och loggar som spelet skapar när det körs
+saves/
+*.log
+
+# --- Editorer ---
+.vscode/
+.idea/
+
+# --- Operativsystem ---
+.DS_Store
+Thumbs.db
+desktop.ini

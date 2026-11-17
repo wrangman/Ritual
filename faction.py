@@ -1,4 +1,4 @@
-from card import Card
+import copy
 
 
 class Faction:
@@ -23,11 +23,4 @@ class Faction:
       return self.get_ritual_goal
    
    def create_cards(self):
-      ghoul_cards = []
-      
-      for idx in range(10):
-         ghoul_cards.append(Card("Ghouls", attack=1, armor=1, magic=0, ritual=0))
-         
-         
-      ghouls = Faction("Ghouls", "Morrigan Upton", ritual_goal=30, ghoul_cards)
-         
+      return [copy.copy(card) for card in self.cards]

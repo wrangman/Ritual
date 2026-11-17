@@ -36,11 +36,49 @@ Varje fraktion har sin egen hjälte, sina egna kort och sina egna skills/förmå
 
 ### Card (`card.py`)
 
-- Fält: `faction`, `name`, `attack`, `armor`, `magic`, `ritual`, `special`, `rarity`.
-- Har getters och setters för alla fält. Det är medvetet: kort påverkar varandras stats under spelet, och en magiker ska i framtiden kunna trolla fram påhittade kort, till exempel ett spöke av ett annat kort.
-- `__str__` ger full visning med ikoner: ⚔️ attack, 🛡️ armor, 🪄 magic, ☩ ritual.
-- `short()` ger kompakt visning för brädet: `Namn [⚔️3 🛡️3 🪄2 ☩3]`.
+Tre klasser, eftersom figurer och spells beter sig olika (figurer stannar på brädet, spells används en gång):
+
+- `Card` är grundklassen med det som alla kort har: `faction`, `name`, `ritual`, `special`, `rarity`. Den skapas inte direkt; `short()` kastar `NotImplementedError`.
+- `CreatureCard(Card)` är en figur på brädet. Den lägger till `attack_name`, `attack_type`, `attack`, `armor`, `magic` och `health`.
+- `SpellCard(Card)` är en spell som spelas från handen. Den lägger bara till `magic` (spellens styrka). `special` beskriver vad den gör.
+- Alla tre har getters och setters för sina fält. Det är medvetet: kort påverkar varandras stats under spelet, och en magiker ska i framtiden kunna trolla fram påhittade kort, till exempel ett spöke av ett annat kort.
+- `AttackType` är en Enum i `card.py` (MELEE, MAGIC). Flyttas till egen fil om fler moduler börjar använda den.
+- `Rarity` är en Enum i `card.py` (COMMON, UNCOMMON, RARE, EPIC, LEGENDARY). Standard är `Rarity.COMMON`.
+- `Special` är en Enum i `card.py`. Namnet (t.ex. `DEVOUR`) säger vilken förmåga det är, värdet är texten spelaren ser. `special=None` betyder ingen förmåga.
+- `__str__` ger full visning med ikoner: ⚔️ attack, 🪄 magic, ❤️ health, 🛡️ armor, ☩ ritual.
+- `short()` ger kompakt visning för brädet: `Namn [⚔️ 3 ❤️ 4 🛡️ 3 ☩ 3]`. ⚔️ och 🪄 visas bara om värdet är större än 0. Mellanslaget efter ikonen behövs: terminalen i VS Code ritar ⚔️, ❤️ och 🛡️ två rutor breda men räknar dem som en, så utan mellanslag hamnar siffran ovanpå ikonen.
 - Koden använder 3 mellanslags indrag.
+
+### Terminalen (`terminal_ui.py`)
+
+- All visning i terminalen, till exempel färger, ligger i `terminal_ui.py`. Korten vet inget om färger (separation of concerns, som i Model-View-Controller).
+- Färg per fraktion: figurer får en färg och spells en ljusare ton av samma färg. Ghouls är mörkröda, The Academics blå, Shoggoths gyllengula och The Deep Ones gröna.
+- Färgerna är 24-bitars ANSI-koder (`rgb()`). Nycklarna i `FACTION_COLORS` måste stämma exakt med kortens `faction`-sträng.
+
+### Strid (bestämt)
+
+- Varje kort har en `attack_type` som avgör vilket värde det anfaller med.
+  - MELEE: skada = ⚔️ attack − målets 🛡️ armor.
+  - MAGIC: skada = 🪄 magic − målets 🪄 magic.
+- Skadan är minst 0 och dras från målets ❤️ health. Kortet dör vid 0.
+- `magic` är alltså både anfall (för MAGIC-kort) och försvar mot magi (för alla kort).
+- Exempel: Academic Apprentice slåss med svärd (MELEE), Master kastar spells från brädet (MAGIC, ⚔️0).
+- Inspirerat av Magic the Gathering (t.ex. Prodigal Sorcerer, en figur som skjuter magi från brädet), inte Hearthstone, där all skada är av samma sort.
+
+### Spellkort (bestämt)
+
+- Spells spelas som i Hearthstone: välj kortet från handen, välj mål, och effekten sker direkt. Kortet hamnar aldrig på brädet.
+- Man kan ångra medan man väljer (kort eller mål). När man har bekräftat är spellen kastad och kan inte tas tillbaka.
+- Exempel: tier 5 hos Ghouls (Resurrect, Plague, Infect, Ruin m.fl.).
+
+### Ritual (bestämt)
+
+- **Ritualkort** är bara tier 4-korten: de finns till för att bygga ritual och kan inte slåss (⚔️ 0). Andra kort kan också ha lite ☩, men räknas inte som ritualkort.
+- I koden är ritualkort klassen `RitualCard(CreatureCard)` i `card.py`. Den är en egen klass eftersom beteendet skiljer sig: `can_attack()` ger `False` (för `CreatureCard` ger den `True`), och bara ritualkort kan få skydds-spells. Spelet känner igen dem med `isinstance(card, RitualCard)`.
+- Sätt att bygga ritual: ritualkort (snabbt, men oskyddat), vanliga kort med lite ☩ (långsamt men säkrare) och spells.
+- Ritual kan stjälas, men bara av fraktioner med dark magic: Ghouls och Academics.
+- Ritualkort skyddas med `TAUNT` på starka melee-kort (fienden måste anfalla dem först, som Taunt i Hearthstone) och med skydds-spells (Ghouls: Veil of Tiamat, Scales of Leviathan, Seal of Apep, Kiss of Lilith, Curse of Choronzon).
+- Skydds-spellernas namn har anti-kosmisk inspiration: gamla kaosväsen och antigudar (Tiamat, Leviathan, Apep, Lilith, Choronzon).
 
 ### Deck (`deck.py`) – under diskussion, inte bestämt
 
@@ -57,3 +95,5 @@ Riktning som diskuterats:
 - Ska alla lekar för en fraktion vara identiska, eller ska spelaren kunna välja kort?
 - Vem bygger leken när ett spel startar: spelaren, spelet eller en meny?
 - När en ghoul äter ett kort, får den kortets grundvärden eller värdena kortet hade när det dog?
+- Är tier 4 hos Ghouls (rena ritualkort med ❤️ 0) figurer eller spells?
+- `Player.play_card()` lägger alla kort i armén. Spells ska i stället verka och sedan hamna i gravhögen.
