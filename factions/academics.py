@@ -12,6 +12,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 import copy
 from faction import Faction
 from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionName
+from hero import Hero, HeroAbility
 
 
 # The Academics have no tier 1. Their creatures are few, magic and weak in melee:
@@ -299,4 +300,6 @@ for card in tier_2 + tier_3 + basic_spells:
 academic_cards += ritual_cards
 academic_cards += spell_cards
 
-academics = Faction(FactionName.ACADEMICS, "Dr. Henry Armitage", ritual_goal=15, cards=academic_cards)
+henry_armitage = Hero("Dr. Henry Armitage", ability=HeroAbility.ELEVENTH_SEAL)
+
+academics = Faction(FactionName.ACADEMICS, henry_armitage, ritual_goal=15, cards=academic_cards)

@@ -12,6 +12,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 import copy
 from faction import Faction
 from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionName
+from hero import Hero, HeroAbility
 
 
 # Tier 1: low stats, no ritual (6 cards x 2 copies = 12)
@@ -318,4 +319,6 @@ for card in tier_1 + tier_2 + tier_3:
 ghoul_cards += ritual_cards
 ghoul_cards += spell_cards
 
-ghouls = Faction(FactionName.GHOULS, "Morrigan Upton", ritual_goal=15, cards=ghoul_cards)
+morrigan_upton = Hero("Morrigan Upton", ability=HeroAbility.FEAST_OF_GRAVES)
+
+ghouls = Faction(FactionName.GHOULS, morrigan_upton, ritual_goal=15, cards=ghoul_cards)

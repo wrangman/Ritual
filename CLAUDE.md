@@ -38,7 +38,7 @@ Varje fraktion har sin egen hjälte, sina egna kort och sina egna skills/förmå
 - **Shoggoths**: hjälte Ur-Shoggothen. Ramp och absorption: dyra, enorma monster som växer och absorberar närliggande pjäser.
 - **The Academics**: hjälte Dr. Henry Armitage. Spells och kunskap: drar mycket kort, Discover via förbjudna böcker, tar skada eller tappar förstånd av stark magi.
   - Academics identitet är att skydda: deras förmågor ska hålla de sköra figurerna och ritualkorten vid liv. Ghouls tål mycket på brädet, Academics överlever genom magi.
-  - Armitages hjälteförmåga ska vara **The Eleventh Seal**: "Your ritual cards cannot be damaged until your next turn, but all your other cards take 2 damage." Namnet bygger på talet 11 i anti-kosmisk satanism, där 11 är porten ut ur kosmos till urkaoset. Inte byggt än, eftersom hjältar inte finns i koden.
+  - Armitages hjälteförmåga är **The Eleventh Seal** (`HeroAbility.ELEVENTH_SEAL` i `hero.py`): "One of your ritual cards cannot be damaged until your next turn, but all your other cards take 2 damage." Namnet bygger på talet 11 i anti-kosmisk satanism, där 11 är porten ut ur kosmos till urkaoset. Effekten är inte byggd än.
 
 ### Card (`card.py`)
 
@@ -55,6 +55,15 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - `__str__` ger full visning med ikoner: ⚔️ attack, 🪄 magic, ❤️ health, 🛡️ armor, ☩ ritual.
 - `short()` ger kompakt visning för brädet: `Namn [⚔️ 3 ❤️ 4 🛡️ 3 ☩ 3]`. ⚔️ och 🪄 visas bara om värdet är större än 0. Mellanslaget efter ikonen behövs: terminalen i VS Code ritar ⚔️, ❤️ och 🛡️ två rutor breda men räknar dem som en, så utan mellanslag hamnar siffran ovanpå ikonen.
 - Koden använder 3 mellanslags indrag.
+
+### Hjälte (`hero.py`) – byggs nu
+
+- `Hero` är en egen klass och inte ett `Card`: den ligger inte i leken, spelas inte och har ingen rarity. (Källa: Fireplace, en Hearthstone-motor i Python, har `Hero` och `Minion` som skilda klasser.)
+- Fält: `name`, `health` (30), `armor` och `magic` (0 från början), `ritual` (börjar på 0). Ritualmålet ligger kvar i `Faction`.
+- Hjälten har armor och magic så att den kan vara mål för `damage_against(target)` precis som ett kort.
+- Varje spelare har en egen hjälte (sammansättning: `Player` har en `Hero`), eftersom hjältens värden ändras under spelet.
+- Hjälteförmågor är enumen `HeroAbility` i `hero.py`, skild från kortens `Special`. Samma mönster: namnet säger vilken förmåga, värdet är texten.
+- Morrigan Upton (Ghouls): **Feast of Graves** – "Eat a card in your graveyard: one of your cards gains its attack and health".
 
 ### Terminalen (`terminal_ui.py`)
 

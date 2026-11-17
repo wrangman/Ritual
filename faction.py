@@ -12,7 +12,7 @@ import copy
 
 
 class Faction:
-   def __init__(self, name, hero, ritual_goal, cards=None, abilities=None):
+   def __init__(self, name, hero, ritual_goal, cards=None):
       self.name = name
       self.hero = hero
       self.ritual_goal = ritual_goal
@@ -20,17 +20,18 @@ class Faction:
          self.cards = cards
       else:
          self.cards = []
-         
-      if abilities:   
-         self.abilities = abilities
-      else:
-         self.abilities = []
       
    def get_name(self):
       return self.name
    
    def get_ritual_goal(self):
       return self.ritual_goal
+   
+   def get_hero(self):
+      return self.hero 
+   
+   def create_hero(self):
+      return copy.copy(self.hero)
    
    def create_cards(self):
       return [copy.copy(card) for card in self.cards]

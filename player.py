@@ -9,6 +9,7 @@ __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
+from hero import Hero
 import terminal_ui
 from card import SpellCard
 from deck import Deck
@@ -18,7 +19,7 @@ class Player:
    def __init__(self, name, faction):
       self.name = name
       self.faction = faction
-      self.ritual_points = 0
+      self.hero = faction.create_hero()
       self.deck = Deck(faction.create_cards())  # nya kortobjekt för just den här spelaren
       self.deck.shuffle()
       self.hand = []
@@ -27,7 +28,7 @@ class Player:
 
    def __str__(self):
       return (f"{self.name} ({self.faction.get_name().value}) – "
-              f"☩ {self.ritual_points}/{self.faction.get_ritual_goal()}, "
+              f"☩ {self.hero.get_ritual()}/{self.faction.get_ritual_goal()}, "
               f"hand: {len(self.hand)}, lek: {len(self.deck)}")
 
    # Handlingar
@@ -76,7 +77,7 @@ class Player:
    # Vinstvillkor som gäller spelaren själv.
    # "Mest ritual" kräver att två spelare jämförs och avgörs därför av spelet, inte här.
    def reached_ritual(self):
-      return self.ritual_points >= self.faction.get_ritual_goal()
+      return self.hero.get_ritual() >= self.faction.get_ritual_goal()
 
    # Utplånad: inga kort på brädet, i handen eller i leken
    def is_wiped_out(self):
@@ -95,6 +96,9 @@ class Player:
    #   0 = passa
    # Returnerar två saker: vad spelaren valde ("card", "action" eller "pass") och vilket kort.
    def choose_move(self, can_play, can_act):
+      print("Hero:")
+      print(terminal_ui.show_hero(self))
+
       print("Hand:")
       print(terminal_ui.show_hand(self))
       if self.army:
@@ -132,11 +136,11 @@ class Player:
    def get_name(self):
       return self.name
 
+   def get_hero(self):
+      return self.hero
+   
    def get_faction(self):
       return self.faction
-
-   def get_ritual_points(self):
-      return self.ritual_points
 
    def get_hand(self):
       return list(self.hand)   # kopia, så att handen bara ändras via Player
@@ -149,7 +153,3 @@ class Player:
 
    def get_deck(self):
       return self.deck
-
-   # Set methods
-   def set_ritual_points(self, ritual_points):
-      self.ritual_points = ritual_points

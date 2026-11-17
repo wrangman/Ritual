@@ -71,3 +71,15 @@ def show_graveyard(player):
    for card in player.get_graveyard():
       lines.append(colored(card))
    return " | ".join(lines)
+
+
+# Visar spelarens hjälte i fraktionens färg. "+" är tangenten som väljer hjälten.
+# Färgen hämtas via spelarens fraktion, eftersom hjälten inte har någon egen fraktion.
+def show_hero(player):
+   hero = player.get_hero()
+   colors = FACTION_COLORS.get(player.get_faction().get_name())
+   if colors is None:
+      color = ""   # okänd fraktion: ingen färg
+   else:
+      color = colors[0]   # samma färg som fraktionens figurer
+   return f"+. {color}{hero.short()}{RESET}"
