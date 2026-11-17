@@ -45,10 +45,10 @@ class Special(Enum):
 
    # Academics, spells (förbjudna böcker). Tung magi skadar de egna korten.
    BOOK_OF_SORROWS = "Strikes one enemy card with magic damage"
-   BOOK_OF_RITUALS = "Adds this spell's ritual to yours"
+   SCROLL_OF_RITUALS ="Adds this spell's ritual to yours"
    ELDER_SIGN = "One of your cards gets extra armor until your next turn"
    LITANY_OF_UNMAKING = "One of your cards gets extra attack this turn"
-   FORBIDDEN_INDEX = "Look at three cards from your deck and put one of them in your hand"
+   FORBIDDEN_CODEX ="Look at three cards from your deck and put one of them in your hand"
    WHISPERED_HEX = "An enemy card loses attack until your next turn"
    NECRONOMICON = "Deals heavy magic damage to one enemy card, but one of your cards takes 3 damage"
    PNAKOTIC_MANUSCRIPTS = "Deals magic damage to all enemy cards, but your own cards take 1 damage"
@@ -56,7 +56,7 @@ class Special(Enum):
    UNAUSSPRECHLICHEN_KULTEN = "Steals ritual from the opponent, but one of your cards takes 2 damage"
    BOOK_OF_EIBON = "Burns away part of the opponent's ritual"
    RLYEH_TEXT = "Draw two cards, but one of your cards takes 2 damage"
-   BOOK_OF_DZYAN = "All your cards get extra magic until your next turn"
+   SCROLL_OF_DZYAN ="All your cards get extra magic until your next turn"
    RITE_OF_THE_THIRTEENTH_HOUR = "All your cards get extra attack this turn, but each of them takes 1 damage"
    PSALMS_OF_THE_VOID = "Heals all your cards"
    THE_KING_IN_YELLOW = "No enemy card can attack next turn, but one of your cards takes 2 damage"
@@ -155,7 +155,7 @@ class CreatureCard(Card):
       stats.append(f"☩ {self.ritual}")
       return f"{self.name} [{' '.join(stats)}]"
 
-   # Vanliga figurer kan anfalla. RitualCard svarar annorlunda.
+   # Vanliga figurer kan anfalla.
    def can_attack(self):
       return True
 
@@ -227,6 +227,7 @@ class RitualCard(CreatureCard):
       stats.append(f"☩ {self.ritual}")
       return f"{self.name} (Ritual) [{' '.join(stats)}]"
 
+   #ritualkort kan inte attackera!
    def can_attack(self):
       return False
 

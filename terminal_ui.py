@@ -6,6 +6,8 @@ from card import SpellCard
 
 RESET = "\033[0m"   # tillbaka till terminalens vanliga färg
 
+LETTERS = "abcdefghijklmnopqrstuvwxyz"   # korten i armén väljs med bokstäver
+
 
 # Ger en ANSI-kod som färgar texten efter den, med exakt den här färgen (röd, grön, blå 0–255)
 def rgb(red, green, blue):
@@ -42,4 +44,12 @@ def show_hand(player):
    lines = []
    for number, card in enumerate(player.get_hand(), start=1):
       lines.append(f"{number}. {colored(card)}")
+   return "\n".join(lines)
+
+
+# Visar spelarens armé med bokstäver, en rad per kort
+def show_army(player):
+   lines = []
+   for index, card in enumerate(player.get_army()):
+      lines.append(f"{LETTERS[index]}. {colored(card)}")
    return "\n".join(lines)

@@ -68,6 +68,16 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - Det finns inget `attack_type`-fält. Det togs bort för att klassen redan avgör sortens skada (YAGNI).
 - The Academics: alla deras figurer är ganska svaga. De har svårt mot till exempel Ghouls i tier 2–3, som har hög armor. Academics styrka är spells: magisk skada räknas mot målets 🪄 magic, inte mot 🛡️ armor, så spells går igenom armor.
 
+### Tur (bestämt)
+
+- Spelare 1 börjar. Slantsingling och mulligan väntar till senare.
+- Starthand: 5 kort.
+- I varje tur gör man två saker, i valfri ordning: **lägga ett kort** och **en action**, till exempel att anfalla med ett kort på brädet. När båda är gjorda går turen över.
+- Finns inget kort som kan göra en action hoppas den över automatiskt.
+- Att kunna välja "pass" kommer senare, inte i första versionen.
+- Att spela en spell räknas som att lägga kortet för turen.
+- Man drar inte i början av turen. Efter att man har lagt sitt kort drar man automatiskt 1 nytt kort, så handen fylls på igen.
+
 ### Spellkort (bestämt)
 
 - Spells spelas som i Hearthstone: välj kortet från handen, välj mål, och effekten sker direkt. Kortet hamnar aldrig på brädet.

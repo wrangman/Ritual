@@ -14,7 +14,7 @@ tier_2 = [
                 armor=1,
                 magic=2,
                 health=2,
-                ritual=0,
+                ritual=1,
                 special=None,
                 rarity=Rarity.RARE),
 
@@ -157,7 +157,7 @@ basic_spells = [
    SpellCard("The Academics", "Scroll of Rituals",
              magic=0,
              ritual=2,
-             special=Special.BOOK_OF_RITUALS,
+             special=Special.SCROLL_OF_RITUALS,
              rarity=Rarity.UNCOMMON),
 
    SpellCard("The Academics", "Elder Sign",
@@ -175,7 +175,7 @@ basic_spells = [
    SpellCard("The Academics", "Forbidden Codex",
              magic=0,
              ritual=0,
-             special=Special.FORBIDDEN_INDEX,
+             special=Special.FORBIDDEN_CODEX,
              rarity=Rarity.UNCOMMON),
 
    SpellCard("The Academics", "Whispered Hex",
@@ -226,7 +226,7 @@ spell_cards = [
    SpellCard("The Academics", "Scroll of Dzyan",
              magic=2,
              ritual=0,
-             special=Special.BOOK_OF_DZYAN,
+             special=Special.SCROLL_OF_DZYAN,
              rarity=Rarity.RARE),
 
    SpellCard("The Academics", "Rite of the Thirteenth Hour",

@@ -1,12 +1,18 @@
+from game import Game
 import terminal_ui
 from player import Player
 from factions.ghouls import ghouls
+from factions.academics import academics
 
 
-player = Player("Joe", ghouls)
+player1 = Player("Joe", academics)
+player2 = Player("Moe", ghouls)
 
+game = Game(player1, player2)
+game.start()
 
-player.draw_cards(5)
+game.play_turn(player1)
 
-print(terminal_ui.show_hand(player))
+print("Army:", [card.short() for card in player1.get_army()])
+print("Graveyard:", [card.short() for card in player1.get_graveyard()])
 

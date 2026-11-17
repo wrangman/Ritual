@@ -1,3 +1,5 @@
+import terminal_ui
+from card import SpellCard
 from deck import Deck
 
 
@@ -25,10 +27,14 @@ class Player:
       self.hand.extend(drawn)
       return drawn
 
-   # Flyttar ett kort från handen till armén
+   # Spelar ett kort från handen. Figurer hamnar i armén.
+   # Spells hamnar aldrig på brädet utan går direkt till döda högen (effekten byggs senare).
    def play_card(self, card):
       self.hand.remove(card)
-      self.army.append(card)
+      if isinstance(card, SpellCard):
+         self.graveyard.append(card)
+      else:
+         self.army.append(card)
 
    # Ett kort i armén dör och flyttas till döda högen
    def kill_card(self, card):
@@ -50,7 +56,7 @@ class Player:
       self.army.append(card)
       
    # Mulligan: "jag vill inte ha det här kortet". Ett nytt kort dras, det gamla läggs sist i leken.
-   #FIXME: kanske ska blanda kortlekn?
+   #FIXME: ska kunna slänga alla kort eller bara två?
    def mulligan(self, card):
       self.hand.remove(card)
       self.draw_cards()
@@ -64,6 +70,52 @@ class Player:
    # Utplånad: inga kort på brädet, i handen eller i leken
    def is_wiped_out(self):
       return not self.army and not self.hand and len(self.deck) == 0
+
+   # Finns det något kort i armén som kan göra en action? (Ritualkort kan inte anfalla.)
+   def has_card_that_can_act(self):
+      for card in self.army:
+         if card.can_attack():
+            return True
+      return False
+
+   # Visar hand och armé och frågar vad spelaren vill göra:
+   #   siffra = lägg det kortet från handen
+   #   bokstav = gör en action med det kortet i armén
+   #   0 = passa
+   # Returnerar två saker: vad spelaren valde ("card", "action" eller "pass") och vilket kort.
+   def choose_move(self, can_play, can_act):
+      print("Hand:")
+      print(terminal_ui.show_hand(self))
+      if self.army:
+         print("Army:")
+         print(terminal_ui.show_army(self))
+
+      # Frågan visar bara de val som går just nu
+      options = []
+      if can_play:
+         options.append(f"1-{len(self.hand)} play a card")
+      if can_act:
+         options.append(f"a-{terminal_ui.LETTERS[len(self.army) - 1]} act with a card")
+      options.append("0) pass")
+      question = ", ".join(options) + ": "
+
+      while True:
+         answer = input(question).strip().lower()
+
+         if answer == "0":
+            return "pass", None
+
+         if can_play and answer.isdigit() and 1 <= int(answer) <= len(self.hand):
+            return "card", self.hand[int(answer) - 1]
+
+         if can_act and len(answer) == 1 and answer in terminal_ui.LETTERS[:len(self.army)]:
+            card = self.army[terminal_ui.LETTERS.index(answer)]
+            if card.can_attack():
+               return "action", card
+            print(f"{card.get_name()} cannot act.")
+            continue
+
+         print("Not a valid choice.")
 
    # Get methods
    def get_name(self):
