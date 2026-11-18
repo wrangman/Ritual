@@ -163,6 +163,8 @@ class CreatureCard(Card):
       self.health = health
       self.max_health = health   # läkning kan aldrig ge mer än så här (som i Hearthstone)
       self.buffs = BuffList()    # tillfälliga ändringar, till exempel från Terror eller Whispered Hex
+      self.ready = False              # har legat på brädet sedan förra turen (summoning sickness)
+      self.attacked_this_turn = False # varje kort får anfalla en gång per tur
 
    def __str__(self):
       return (f"{self.faction.value if self.faction else '–'} - {self.name}; {self.attack_name or '–'}; "
@@ -259,9 +261,24 @@ class CreatureCard(Card):
       stats.append(f"☩ {self.ritual}")
       return f"{self.name} [{' '.join(stats)}]{self.statuses_text()}"
 
-   # Vanliga figurer kan anfalla, om ingen buff hindrar dem (Terror, The King in Yellow).
+   # Vanliga figurer kan anfalla om de har legat på brädet sedan förra turen,
+   # inte redan har anfallit den här turen, och ingen buff hindrar dem (Terror, The King in Yellow).
    def can_attack(self):
-      return not self.buffs.cannot_attack()
+      return self.ready and not self.attacked_this_turn and not self.buffs.cannot_attack()
+
+   # Summoning sickness (som i Hearthstone): ett kort som kommer ut på brädet
+   # (läggs eller återupplivas) måste vänta till sin ägares nästa tur innan det får anfalla.
+   def enter_board(self):
+      self.ready = False
+      self.attacked_this_turn = False
+
+   # I början av ägarens tur: kortet är redo och får anfalla en gång igen
+   def ready_for_turn(self):
+      self.ready = True
+      self.attacked_this_turn = False
+
+   def mark_attacked(self):
+      self.attacked_this_turn = True
 
    # Hur mycket skada figuren gör på target: ⚔️ attack minus målets 🛡️ armor, minst 0.
    # Ett mål som är skyddat mot figurer tar ingen skada alls (Seal of the Black Sun).
@@ -269,6 +286,13 @@ class CreatureCard(Card):
       if target.is_immune_to_melee():
          return 0
       return max(0, self.get_attack() - target.get_armor())
+
+   # Hur mycket figuren slår tillbaka när den blir anfallen (som i Hearthstone).
+   # Samma formel som ett vanligt anfall: ⚔️ attack minus anfallarens 🛡️ armor.
+   # Ritualkort har ⚔️ 0 och slår därför aldrig tillbaka. En buff som Terror hindrar
+   # bara kortet från att anfalla, inte från att försvara sig.
+   def counter_damage_against(self, attacker):
+      return self.damage_against(attacker)
 
 
    # Get methods

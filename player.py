@@ -15,9 +15,14 @@ from deck import Deck
 
 
 class Player:
-   def __init__(self, name, faction):
+   MAX_ARMY = 7   # högst så många kort på brädet, som i Hearthstone
+
+   # controller väljer åt spelaren: en HumanController (via terminalen) eller en AI.
+   # Player anropar aldrig controllern själv, det gör Game.
+   def __init__(self, name, faction, controller):
       self.name = name
       self.faction = faction
+      self.controller = controller
       self.hero = faction.create_hero()
       self.deck = Deck(faction.create_cards())  # nya kortobjekt för just den här spelaren
       self.deck.shuffle()
@@ -59,6 +64,7 @@ class Player:
          self.graveyard.append(card)
       else:
          self.army.append(card)
+         card.enter_board()   # får inte anfalla förrän nästa tur
 
    # Ett kort i armén dör och flyttas till döda högen. Buffarna försvinner.
    # Ritualen vilar på korten: när ett kort dör tappar hjälten den ☩ kortet ger just nu.
@@ -90,6 +96,12 @@ class Player:
    def revive_card(self, card):
       self.graveyard.remove(card)
       self.army.append(card)
+      card.enter_board()   # som i Hearthstone: ett återupplivat kort måste också vänta en tur
+
+   # I början av turen blir alla kort i armén redo att anfalla (en gång var)
+   def ready_army(self):
+      for card in self.army:
+         card.ready_for_turn()
       
    # Tar de översta korten ur leken för att titta på dem (Forbidden Codex).
    # De ligger varken i leken eller i handen förrän take_into_hand eller return_to_deck_bottom anropas.
@@ -149,6 +161,10 @@ class Player:
    def can_afford(self, card):
       return card.get_cost() <= self.resource
 
+   # Finns det plats för ett kort till på brädet?
+   def has_room_on_board(self):
+      return len(self.army) < self.MAX_ARMY
+
    # Finns det något kort i handen som spelaren har råd med?
    def has_affordable_card(self):
       for card in self.hand:
@@ -156,8 +172,9 @@ class Player:
             return True
       return False
 
-   # Finns det något kort i armén som kan göra en action?
-   # (Ritualkort kan inte anfalla, och inte heller kort med en buff som Terror.)
+   # Finns det något kort i armén som kan anfalla just nu?
+   # (Inte ritualkort, inte kort med en buff som Terror, inte kort som lades den här turen
+   # och inte kort som redan har anfallit.)
    def has_card_that_can_act(self):
       for card in self.army:
          if card.can_attack():
@@ -223,6 +240,9 @@ class Player:
 
    def get_hero(self):
       return self.hero
+
+   def get_controller(self):
+      return self.controller
    
    def get_faction(self):
       return self.faction

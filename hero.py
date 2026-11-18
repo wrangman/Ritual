@@ -91,6 +91,11 @@ class Hero:
    def can_be_attacked(self):
       return True
 
+   # Hjälten slår inte tillbaka när den blir anfallen (i Hearthstone bara med ett vapen,
+   # och hjältarna här har inga vapen). Finns så att hjälten kan vara mål precis som ett kort.
+   def counter_damage_against(self, attacker):
+      return 0
+
    def is_immune_to_melee(self):
       return self.buffs.no_melee_damage()
 

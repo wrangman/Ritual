@@ -36,6 +36,9 @@ class Trigger:
    def is_used_up(self):
       return self.used_up
 
+   def get_owner(self):
+      return self.owner
+
 
 # Infect: det smittade kortet tar skada i början av varje tur för den som smittade det,
 # tills kortet dör eller lämnar brädet.

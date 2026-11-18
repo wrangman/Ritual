@@ -1,7 +1,7 @@
 """
 Entry point for Ritual, a Lovecraft-inspired card game played in the terminal... for now!
 
-Creates two players with their factions and starts the game.
+Creates two players with their factions and starts the game: you against the AI.
 """
 
 __author__ = "Johan Wrangö"
@@ -13,15 +13,18 @@ import subprocess
 from game import Game
 from player import Player
 from terminal_ui import TerminalUI
+from controller import HumanController
+from ai import SmartAI
 from factions.ghouls import ghouls
 from factions.academics import academics
 
 
 subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
 
-player1 = Player("Joe", academics)
-player2 = Player("Moe", ghouls)
+ui = TerminalUI()
 
-game = Game(player1, player2, TerminalUI())
+player1 = Player("Joe", academics, HumanController(ui))
+player2 = Player("Moe", ghouls, SmartAI())
+
+game = Game(player1, player2, ui)
 game.run()
-

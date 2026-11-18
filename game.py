@@ -7,30 +7,35 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 
+import copy
 from card import SpellCard
+from move import PlayCard, Attack, EndTurn
+from silent_ui import SilentUI
 
 
 class Game:
    # Så mycket resurs varje spelare får i början av sin tur. Det som inte används sparas.
    RESOURCE_PER_TURN = 1
 
-   # ui shows the game and asks the players, for example a TerminalUI.
-   # Game does not know if it is a terminal or graphics, only that ui has the same methods.
+   # ui visar spelet, till exempel en TerminalUI (eller SilentUI när ingen tittar).
+   # Valen gör varje spelares controller (människa eller AI), inte ui.
+   # Game vet inte om det är terminal eller grafik, bara att ui har samma metoder.
    def __init__(self, player1, player2, ui):
       self.player1 = player1
       self.player2 = player2
       self.current_player = player1
       self.ui = ui
       self.triggers = []   # effekter som väntar på att något ska hända (Infect, Mirror of Nitocris ...)
+      self.turn_count = 0  # hur många turer som har spelats (för statistik i simuleringar)
 
    def start(self):
       self.player1.draw_cards(5)
       self.player2.draw_cards(5)
 
-   # En tur: spelaren lägger så många kort hen har råd med och gör en action, i valfri ordning.
+   # En tur: spelaren lägger så många kort hen har råd med och anfaller med varje kort
+   # som har legat sedan förra turen (en gång var), i valfri ordning.
    # Turen är slut när inget mer går att göra, eller när spelaren passar (för att spara resurs).
    def play_turn(self):
-      did_action = False
       current_player = self.current_player
 
       # Ritualen avgörs först, innan något annat händer i turen (före dragning och ny ☩).
@@ -42,6 +47,9 @@ class Game:
 
       # Buffar som spelaren lade "until your next turn" går ut nu
       self.remove_expired_buffs(this_turn_only=False)
+
+      # Korten som låg kvar sedan förra turen blir redo att anfalla, en gång var
+      current_player.ready_army()
 
       # Triggers som väntar på att en tur börjar (till exempel Infect)
       for trigger in list(self.triggers):
@@ -64,47 +72,23 @@ class Game:
       if self.is_over():
          return
 
+      # Spelaren gör ett drag i taget tills hen avslutar turen eller inget mer går att göra.
+      # Game räknar ut vilka drag som är lagliga, och spelarens controller (människa eller AI)
+      # väljer ett av dem. Då står reglerna bara här, och ingen kan göra ett olagligt drag.
       while True:
-         can_play = current_player.has_affordable_card()
-         can_act = not did_action and current_player.has_card_that_can_act()
+         moves = self.get_legal_moves(current_player)
+         if len(moves) == 1:
+            break   # bara "end turn" kvar: inget mer går att göra
 
-         if not can_play and not can_act:
-            break   # inget kvar att göra
+         move = current_player.get_controller().choose_move(self, current_player, moves)
+         if move.ends_turn():
+            break
 
-         move, card = self.ui.choose_move(current_player, can_play, can_act)
+         self.ui.show_message(move.describe(current_player))   # så att man ser vad AI:n gör
+         move.execute(self)
 
-         if move == "card":
-            # är det ett spellcard med en effekt? Då väljs målet först, om effekten behöver ett.
-            # Effekten själv säger vilka mål som är tillåtna.
-            effect = None
-            target = None
-            if isinstance(card, SpellCard) and card.get_effect():
-               effect = card.get_effect()
-               if effect.needs_target():
-                  targets = effect.get_targets(self)
-                  if not targets:
-                     # Som i Hearthstone: en spell utan giltiga mål kan inte spelas
-                     self.ui.show_message(f"{card.get_name()} has no valid target.")
-                     continue
-                  target = self.ui.choose_target(targets)
-
-            # Sedan betalas kortet och läggs ut (spells går till döda högen)
-            current_player.play_card(card)
-
-            if effect:
-               effect.apply(self, card, target)
-
-         elif move == "action":
-            targets = self.get_opponent().get_targets()
-            target = self.ui.choose_target(targets)
-            self.attack(card, target)
-            
-            did_action = True
-
-         else:
-            break   # pass
-
-         if self.is_over(): break
+         if self.is_over():
+            break
 
       # Varning till motståndaren: det här är sista chansen att stoppa ritualen
       if not self.is_over() and current_player.reached_ritual():
@@ -127,17 +111,80 @@ class Game:
       self.player1.remove_expired_buffs(self.current_player, this_turn_only)
       self.player2.remove_expired_buffs(self.current_player, this_turn_only)
 
-   # Effekter som låter spelaren välja (till exempel Forbidden Codex) frågar via gränssnittet
    def get_ui(self):
       return self.ui
 
+   # Effekter som låter spelaren välja (till exempel Forbidden Codex) frågar spelarens controller
+   def choose_card(self, player, cards):
+      return player.get_controller().choose_card(self, player, cards)
+
    def get_opponent(self):
-      return self.player2 if self.current_player is self.player1 else self.player1
+      return self.get_opponent_of(self.current_player)
+
+   def get_opponent_of(self, player):
+      return self.player2 if player is self.player1 else self.player1
+
+   def get_triggers(self):
+      return list(self.triggers)
+
+   def get_turn_count(self):
+      return self.turn_count
 
 
-   # En figur anfaller. Triggers får först chansen att ta hand om anfallet (Mirror of Nitocris),
-   # och efteråt får de reagera på det (Curse of Choronzon).
+   # Lagliga drag
+
+   # Alla drag som player får göra just nu. "End turn" finns alltid med, sist.
+   # - Kort i handen som spelaren har råd med. Figurer bara om det finns plats på brädet.
+   #   Spells som behöver ett mål blir ett drag per tillåtet mål (effekten säger vilka),
+   #   och en spell utan något tillåtet mål kan inte spelas alls (som i Hearthstone).
+   # - Anfall: varje kort som får anfalla, mot varje mål som får anfallas.
+   def get_legal_moves(self, player):
+      moves = []
+
+      for card in player.get_hand():
+         if not player.can_afford(card):
+            continue
+         if isinstance(card, SpellCard):
+            effect = card.get_effect()
+            if effect and effect.needs_target():
+               for target in effect.get_targets(self):
+                  moves.append(PlayCard(card, target))
+            else:
+               moves.append(PlayCard(card))
+         elif player.has_room_on_board():
+            moves.append(PlayCard(card))
+
+      targets = self.get_opponent_of(player).get_targets()
+      for card in player.get_army():
+         if card.can_attack():
+            for target in targets:
+               moves.append(Attack(card, target))
+
+      moves.append(EndTurn())
+      return moves
+
+   # Den aktiva spelaren lägger ett kort. Kortet betalas och läggs ut
+   # (spells går till döda högen), sedan sker spellens effekt.
+   def play_card(self, card, target=None):
+      self.current_player.play_card(card)
+      if isinstance(card, SpellCard) and card.get_effect():
+         card.get_effect().apply(self, card, target)
+
+
+   # En kopia av hela spelet som AI:n kan prova ett drag på, utan att det riktiga spelet ändras.
+   # Kopian får ett gränssnitt som inte visar något, så att inget skrivs ut medan AI:n tänker.
+   # Saker som skickas med i others (till exempel draget som ska provas) kopieras tillsammans
+   # med spelet, så att de pekar på kopians kort och inte på de riktiga.
+   def copy_for_simulation(self, *others):
+      memo = {id(self.ui): SilentUI()}   # deepcopy byter ut self.ui mot det tysta gränssnittet
+      return copy.deepcopy((self, *others), memo)
+
+
+   # En figur anfaller och målet slår tillbaka. Triggers får först chansen att ta hand om
+   # anfallet (Mirror of Nitocris, då blir det ingen motskada), och efteråt får de reagera
+   # på det (Curse of Choronzon).
    def attack(self, attacker, target):
+      attacker.mark_attacked()   # kortet har gjort sitt anfall för den här turen
       handled = False
       for trigger in list(self.triggers):
          if trigger.before_attack(self, attacker, target):
@@ -145,8 +192,12 @@ class Game:
             break
 
       if not handled:
+         # Båda gör skada på varandra samtidigt (som i Hearthstone): båda värdena räknas ut
+         # innan någon tar skada, så målet slår tillbaka även om det dör.
          damage = attacker.damage_against(target)
+         counter_damage = target.counter_damage_against(attacker)
          target.take_damage(damage)
+         attacker.take_damage(counter_damage)
          for trigger in list(self.triggers):
             trigger.after_attack(self, attacker, target, damage)
 
@@ -198,13 +249,18 @@ class Game:
       else:
          return None
 
+   # En hel tur, från början till slut, och sedan är det den andras tur
+   def take_turn(self):
+      self.play_turn()
+      self.remove_expired_buffs(this_turn_only=True)   # "this turn"-buffar går ut
+      self.switch_turn()
+      self.turn_count += 1
+
    def run(self):
       self.start()
 
       while not self.is_over():
-         self.play_turn()
-         self.remove_expired_buffs(this_turn_only=True)   # "this turn"-buffar går ut
-         self.switch_turn()
+         self.take_turn()
 
       winner = self.determine_winner()
       if winner:

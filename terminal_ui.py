@@ -4,9 +4,10 @@ Everything to do with the terminal: colors, output and input.
 The cards and players know nothing about the terminal. TerminalUI decides
 how things look and asks the person at the keyboard what to do.
 
-Game gets a TerminalUI when it is created. A graphical version later
-(for example PygameUI) gets the same method names, so Game does not
-need to change.
+Game gets a TerminalUI when it is created and uses it to show what happens.
+A human player's HumanController uses it to ask for choices. A graphical
+version later (for example PygameUI) gets the same method names, so Game
+does not need to change.
 """
 
 __author__ = "Johan Wrangö"
@@ -73,11 +74,15 @@ class TerminalUI:
          lines.append(f"({card.get_cost()}) {self.colored(card)}")
       return self.numbered(lines)
 
-   # Visar spelarens armé med bokstäver, med | mellan korten
-   def show_army(self, player):
+   # Visar spelarens armé med | mellan korten. Med bokstäver när spelaren ska kunna välja
+   # ett kort (den egna armén), utan när det bara är att titta (motståndarens).
+   def show_army(self, player, with_letters=True):
       lines = []
       for index, card in enumerate(player.get_army()):
-         lines.append(f"{LETTERS[index]}. {self.colored(card)}")
+         if with_letters:
+            lines.append(f"{LETTERS[index]}. {self.colored(card)}")
+         else:
+            lines.append(self.colored(card))
       return " | ".join(lines)
 
    # Visar spelarens döda hög i färg, med | mellan korten
@@ -87,7 +92,7 @@ class TerminalUI:
          lines.append(self.colored(card))
       return " | ".join(lines)
 
-   # Visar spelarens hjälte i fraktionens färg. "+" är tangenten som väljer hjälten.
+   # Visar spelarens hjälte i fraktionens färg.
    # Färgen hämtas via spelarens fraktion, eftersom hjälten inte har någon egen fraktion.
    def show_hero(self, player):
       hero = player.get_hero()
@@ -97,7 +102,7 @@ class TerminalUI:
       else:
          color = colors[0]   # samma färg som fraktionens figurer
       goal = player.get_faction().get_ritual_goal()
-      text = f"+. {color}{hero.short()}{RESET}  (ritual goal ☩ {goal}, deck: {len(player.get_deck())}"
+      text = f"{color}{hero.short()}{RESET}  (ritual goal ☩ {goal}, deck: {len(player.get_deck())}"
       # Stressen visas först när leken är slut och den har börjat växa
       if player.get_stress() > 0:
          text += f", stress {player.get_stress()}"
@@ -118,17 +123,25 @@ class TerminalUI:
 
    # Val
 
-   # Visar hjälte, hand och armé och frågar vad spelaren vill göra:
+   # Visar motståndarens sida, sedan den egna hjälten, handen och armén,
+   # och frågar vad spelaren vill göra:
    #   siffra = lägg det kortet från handen
-   #   bokstav = gör en action med det kortet i armén
-   #   0 = passa
-   # Returnerar två saker: vad spelaren valde ("card", "action" eller "pass") och vilket kort.
-   def choose_move(self, player, can_play, can_act):
+   #   bokstav = anfall med det kortet i armén
+   #   0 = avsluta turen
+   # moves är de lagliga dragen från Game. Terminalen kollar inga regler själv:
+   # den visar bara de val som finns i listan och returnerar draget spelaren valde.
+   # Behöver kortet ett mål frågas det efteråt (två steg, så att listan inte blir för lång).
+   def choose_move(self, game, player, moves):
       hand = player.get_hand()
       army = player.get_army()
+      opponent = game.get_opponent_of(player)
 
       print(f"\n--- {player.get_name()}'s turn ---")
-      print("Hero:")
+      print(f"Opponent {opponent.get_name()}:")
+      print(self.show_hero(opponent))
+      if opponent.get_army():
+         print(self.show_army(opponent, with_letters=False))
+      print("Your hero:")
       print(self.show_hero(player))
       resource_line = f"{RESOURCE_NAME}: {player.get_resource()}"
       if player.get_overload() > 0:
@@ -140,12 +153,16 @@ class TerminalUI:
          print("Army:")
          print(self.show_army(player))
 
+      # Vilka kort går att lägga, och vilka kort får anfalla? Det står i dragen.
+      can_play = any(self.moves_for(card, moves) for card in hand)
+      can_attack = any(self.moves_for(card, moves) for card in army)
+
       # Frågan visar bara de val som går just nu
       options = []
       if can_play:
          options.append(f"1-{len(hand)} play a card")
-      if can_act:
-         options.append(f"a-{LETTERS[len(army) - 1]} act with a card")
+      if can_attack:
+         options.append(f"a-{LETTERS[len(army) - 1]} attack")
       options.append("0) end turn")
       question = ", ".join(options) + ": "
 
@@ -153,26 +170,52 @@ class TerminalUI:
          answer = input(question).strip().lower()
 
          if answer == "0":
-            return "pass", None
+            return self.end_turn_move(moves)
 
-         if can_play and answer.isdigit() and 1 <= int(answer) <= len(hand):
+         card = None
+         if answer.isdigit() and 1 <= int(answer) <= len(hand):
             card = hand[int(answer) - 1]
-            if player.can_afford(card):
-               return "card", card
-            print(f"Not enough {RESOURCE_NAME} for {card.get_name()} (costs {card.get_cost()}).")
-            continue
-
-         if can_act and len(answer) == 1 and answer in LETTERS[:len(army)]:
+         elif len(answer) == 1 and answer in LETTERS[:len(army)]:
             card = army[LETTERS.index(answer)]
-            if card.can_attack():
-               return "action", card
-            print(f"{card.get_name()} cannot act.")
+
+         if card is None:
+            print("Not a valid choice.")
             continue
 
-         print("Not a valid choice.")
+         card_moves = self.moves_for(card, moves)
+         if not card_moves:
+            print(f"{card.get_name()} can't do anything right now.")
+            continue
+
+         return self.choose_move_for_card(card_moves)
+
+   # Dragen som ett visst kort kan göra (att lägga det, eller att anfalla med det)
+   def moves_for(self, card, moves):
+      found = []
+      for move in moves:
+         if move.get_card() is card:
+            found.append(move)
+      return found
+
+   def end_turn_move(self, moves):
+      for move in moves:
+         if move.ends_turn():
+            return move
+
+   # Kortet kan göra ett eller flera drag. Har dragen olika mål får spelaren välja mål.
+   def choose_move_for_card(self, card_moves):
+      if len(card_moves) == 1:
+         return card_moves[0]
+      targets = []
+      for move in card_moves:
+         targets.append(move.get_target())
+      target = self.choose_target(targets)
+      for move in card_moves:
+         if move.get_target() is target:
+            return move
 
    # Shows the allowed targets and lets the player pick one. Returns the target.
-   # The game decides which targets are allowed (Player.get_targets), not the terminal.
+   # The game decides which targets are allowed (Game.get_legal_moves), not the terminal.
    # Targets are shown without color: colored() needs get_faction(), and the hero has no faction.
    def choose_target(self, targets):
       lines = []

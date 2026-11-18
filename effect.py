@@ -37,6 +37,12 @@ class Effect:
    def get_targets(self, game):
       return game.get_opponent().get_spell_targets()
 
+   # En effekt har inget eget tillstånd (styrkan kommer från spellen), så när AI:n
+   # kopierar spelet för att prova ett drag kan kopian dela samma effekt-objekt.
+   # Det gör kopieringen mycket snabbare.
+   def __deepcopy__(self, memo):
+      return self
+
 
 # Skadar en fiende med spellens 🪄 magic.
 # Samma tre steg som Game.attack, men det är spellen som slår.
@@ -192,6 +198,8 @@ class ReviveRandom(Effect):
 
    def apply(self, game, spell, target):
       caster = game.get_current_player()
+      if not caster.has_room_on_board():
+         return   # brädet är fullt (7 kort), som i Hearthstone händer då ingenting
       dead_cards = []
       for card in caster.get_graveyard():
          if isinstance(card, CreatureCard):
@@ -237,7 +245,7 @@ class LookAtTopCards(Effect):
       cards = caster.reveal_top_cards(self.amount)
       if not cards:
          return   # leken är tom
-      chosen = game.get_ui().choose_card(cards)
+      chosen = game.choose_card(caster, cards)   # människa eller AI väljer
       caster.take_into_hand(chosen)
       for card in cards:
          if card is not chosen:

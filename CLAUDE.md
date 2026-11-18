@@ -72,9 +72,33 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 ### Terminalen (`terminal_ui.py`)
 
 - All visning och inmatning i terminalen ligger i klassen `TerminalUI` i `terminal_ui.py`. Korten och spelarna vet inget om terminalen (separation of concerns, som i Model-View-Controller). `Player` gör aldrig `print` eller `input`.
-- `Game` får sitt gränssnitt utifrån: `Game(player1, player2, TerminalUI())`, och anropar bara `self.ui.choose_move(...)`, `self.ui.choose_target(...)` osv. Spelet görs för terminalen först, sedan grafik: en grafisk version (t.ex. `PygameUI`) ska ha samma metodnamn, så att `Game` inte behöver ändras (Strategy-mönstret, Gang of Four).
+- `Game` får sitt gränssnitt utifrån: `Game(player1, player2, ui)`. `Game` använder `ui` bara för att **visa** (`show_message`, `show_winner`, `show_draw`). **Valen** görs av spelarens controller (se AI och controllers). En mänsklig spelares `HumanController` frågar via `TerminalUI` (`choose_move(game, player, moves)`, `choose_target`, `choose_card`). Spelet görs för terminalen först, sedan grafik: en grafisk version (t.ex. `PygameUI`) ska ha samma metodnamn, så att `Game` inte behöver ändras (Strategy-mönstret, Gang of Four).
+- **Grundspelet ska alltid gå att spela i terminalen** (användaren vill kunna visa det), även när grafiken finns. Terminalen behöver inte alla finesser.
+- `TerminalUI.choose_move` kollar inga regler själv: den visar motståndarens hjälte och armé, den egna sidan, och väljer bland de lagliga dragen från `Game` (siffra = kort i handen, bokstav = anfall, 0 = avsluta turen; har kortet flera mål frågas målet efteråt).
+- `SilentUI` (`silent_ui.py`) visar ingenting. Används i tester, simuleringar och när AI:n provar drag på en kopia.
 - Färg per fraktion: figurer får en färg och spells en ljusare ton av samma färg. Ghouls är mörkröda, The Academics blå, Shoggoths gyllengula och The Deep Ones gröna.
 - Färgerna är 24-bitars ANSI-koder (`rgb()`). Nycklarna i `FACTION_COLORS` är `FactionName`-värden.
+
+### AI och controllers (byggt 2026-11-18)
+
+- **Vem som väljer är skilt från vad som visas.** Varje `Player` *har* en controller (sammansättning), `Player(name, faction, controller)`. `Player` anropar den aldrig själv, det gör `Game`. Källa: Forge (motor för Magic) har `PlayerController` med `PlayerControllerHuman` och `PlayerControllerAi`.
+- `controller.py`: `Controller` är en abstrakt basklass (`abc`) med `choose_move(game, player, moves)` och `choose_card(game, player, cards)`. `HumanController(ui)` skickar vidare till gränssnittet.
+- **Lagliga drag:** `Game.get_legal_moves(player)` räknar ut alla drag; controllern väljer ett. Källa: MetaStone (Hearthstone-simulator) ger `validActions` till spelarens `Behaviour`. Då ligger reglerna på ett ställe, och människor och AI väljer ur samma lista. Dragen är objekt i `move.py` (Command-mönstret): `PlayCard(card, target)`, `Attack(card, target)`, `EndTurn()`, med `execute(game)` och `describe(player)`. Ett drag är komplett (målet ingår), så att AI:n kan prova varje drag. En spell utan tillåtet mål blir inget drag. Figurer blir inget drag när brädet är fullt.
+- **Max 7 kort på brädet (byggt):** `Player.MAX_ARMY = 7`, `has_room_on_board()`. Resurrect (`ReviveRandom`) gör ingenting när brädet är fullt, som i Hearthstone.
+- `Game` visar varje drag med `show_message(move.describe(player))`, så att man ser vad AI:n gör.
+- `ai.py`:
+  - `RandomAI`: slumpar bland de lagliga dragen (avslutar turen med 10 % chans). Jämförelse och krasch-sökning.
+  - `SmartAI`: provar varje drag på en kopia av spelet (`Game.copy_for_simulation(move)`, `copy.deepcopy` med `SilentUI`) och betygsätter läget med `evaluate()`. Väljer bästa draget, tills inget drag gör läget bättre (`MIN_GAIN`), då avslutas turen. Principen bakom `GreedyOptimizeMove` i MetaStone. Nya kort kräver ingen ny AI-kod.
+  - Betyget bygger på vikterna i `SmartAI.WEIGHTS` (hjältens hälsa, ritual, ☩ på brädet, figurernas stats, Guard, kort i handen, triggers, Seal of Apep, om ens hjälte saknar skydd m.m.). Har motståndaren nått ritualmålet ger det −300: hen vinner i början av sin tur. Vikterna är gissningar; andra vikter ger en annan spelstil (`SmartAI(weights={...})`).
+  - **Sparande:** resurs är värd det den kan köpa. Finns en figur eller ett ritualkort i handen som AI:n inte har råd med, räknas sparad resurs som en del av det kortets värde (`saving`). Utan detta spelade AI:n bara billiga kort och aldrig ritualkort.
+  - Begränsningar: tittar bara ett drag framåt; slumpade effekter provas en gång; spells räknas inte som något att spara till.
+- För att kopieringen ska gå snabbt delas sådant som inte ändras under en match mellan kopiorna (`__deepcopy__` returnerar `self`): effekter, fraktioner och controllers. En SmartAI-match tar ungefär 0,2 sekunder.
+- **Bara människa mot AI (beslutat 2026-11-18).** Människa mot människa är borttaget och ska inte gå längre. `main.py` startar alltid spelaren (`HumanController`) mot `SmartAI`.
+
+### Tester och simulering (byggt 2026-11-18)
+
+- `python3 -m unittest` i projektmappen kör alla tester i `tests/` (32 st, ungefär en sekund): regler (`test_rules.py`), lagliga drag och terminalens val (`test_moves.py`, med `unittest.mock.patch` på `input`), AI:ns val och hela matcher (`test_ai.py`). Gemensamma hjälpfunktioner i `tests/helpers.py`.
+- `python3 simulate.py [antal] [--ai smart|random] [--seed N]` låter AI spela mot AI och skriver ut vinster per fraktion, hur matcherna slutade, hur ofta den som började vann, och antal turer. Varje match har en egen seed (samma seed = exakt samma match). Fraktionerna turas om att börja.
 
 ### Strid (bestämt)
 
@@ -91,13 +115,16 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 
 - Mål väljs i ordning (`Player.get_targets()`): finns kort med Guard får bara de anfallas. Annars får alla kort i armén anfallas. Hjälten kan bara anfallas när armén är tom. Dolda kort (Veil of Tiamat) räknas inte alls.
 - Anfall i `Game.attack(attacker, target)`: triggers får först ta hand om anfallet (Mirror of Nitocris); annars räknar anfallaren skadan (`damage_against`), målet tar den (`take_damage`) och triggers reagerar (Curse of Choronzon). Sist städas döda kort bort på båda sidor.
-- Målet slår inte tillbaka (i Hearthstone gör båda korten skada på varandra). *Inte bestämt om det ska ändras.*
+- **Målet slår tillbaka (byggt 2026-11-18),** som i Hearthstone: båda gör skada på varandra samtidigt, så målet slår tillbaka även om det dör, och båda kan dö. Motskadan räknas med samma formel (målets ⚔️ − anfallarens 🛡️). Målet räknar själv ut sin motskada med `counter_damage_against(attacker)` (polymorfism): figurer använder `damage_against`, hjälten ger alltid 0 (inga vapen). Ritualkort har ⚔️ 0 och slår därför aldrig tillbaka. Terror hindrar inte motskada (som frysta figurer i Hearthstone). Mirror of Nitocris tar hand om hela anfallet, så då blir det ingen motskada. Spells får aldrig motskada.
+- **Summoning sickness och ett anfall per kort (byggt 2026-11-18):** ett kort som läggs eller återupplivas får inte anfalla samma tur, det måste vänta till ägarens nästa tur, precis som i Hearthstone. Varje redo kort får anfalla en gång per tur. I koden: `CreatureCard.ready` och `attacked_this_turn`; `enter_board()` (från `Player.play_card()` och `revive_card()`), `ready_for_turn()` (via `Player.ready_army()` i början av turen) och `mark_attacked()` (i `Game.attack()`). `can_attack()` räknar in allt detta, så `TerminalUI` och `has_card_that_can_act()` behövde inte ändras.
+  - *Notering, senare:* Academics ska få en spell som låter ett kort anfalla samma tur som det läggs (som Charge i Hearthstone). Väntar tills vi rättar till och lägger till spells.
+- **Max 7 kort på brädet (byggt 2026-11-18),** som i Hearthstone. Se AI och controllers.
 
 ### Tur (bestämt)
 
 - Spelare 1 börjar. Slantsingling och mulligan väntar till senare.
 - Starthand: 5 kort.
-- I varje tur, i valfri ordning: **lägg så många kort du har råd med** (se Resursen) och gör **en action**, till exempel att anfalla med ett kort på brädet. *Om en action per tur ska finnas kvar, eller om alla kort i armén får anfalla en gång var, är inte bestämt.*
+- I varje tur, i valfri ordning: **lägg så många kort du har råd med** (se Resursen) och **anfall med varje kort som har legat på brädet sedan förra turen, en gång var** (som i Hearthstone; byggt 2026-11-18). Den gamla regeln "en action per tur" är borttagen.
 - Turen går över när inget mer går att göra, eller när spelaren väljer "0) end turn", till exempel för att spara resurs till ett dyrt kort.
 - Finns inget kort som kan göra en action hoppas den över automatiskt.
 - Man drar 1 kort i början av sin egen tur, även första turen, som i Hearthstone. Då har man fler val när man spelar.
@@ -166,6 +193,16 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - Ritualkort skyddas med `GUARD` på starka melee-kort (fienden måste anfalla dem först, som Taunt i Hearthstone; namnet Guard kommer från The Elder Scrolls: Legends) och med skydds-spells (Ghouls: Veil of Tiamat, Scales of Leviathan, Seal of Apep, Kiss of Lilith, Curse of Choronzon).
 - Skydds-spellernas namn har anti-kosmisk inspiration: gamla kaosväsen och antigudar (Tiamat, Leviathan, Apep, Lilith, Choronzon).
 
+### Figurernas förmågor (delvis beslutat 2026-11-18, inte byggt)
+
+Bara GUARD fungerar idag. Det här är bestämt eller noterat:
+
+- **DEVOUR (Ghouls, 6 figurer):** äter döda kort i den **egna** gravhögen. Att äta ur motståndarens gravhög väntar; det passar kanske bättre för en helt annan fraktion senare. *Öppet:* försvinner kortet ur gravhögen (så att Resurrect inte kan väcka det)? Grundvärden eller värdena när kortet dog? Hur skiljer sig DEVOUR från hjälteförmågan Feast of Graves?
+- **SACRIFICE (Academics):** "Sacrifices itself to boost another card". Inget kort har den än; några Academics-figurer ska få den. Passar deras identitet att skydda (offra en skör figur för att stärka t.ex. ett ritualkort). Kostar ritual om kortet har ☩ (se Ritual).
+- **ABSORB (Shoggoths), notering, väntar:** Shoggoths absorberar närliggande pjäser för att få liv och attack (se `README.md`). Det ska heta Absorb, inte Sacrifice. Byggs när Shoggoths byggs.
+- **SUMMON (Wilbur Whateley):** ska hämta ett **slumpat** kort ur leken, inte ett valfritt (som Recruit i Hearthstone, Kobolds & Catacombs, som lägger en slumpad figur ur leken på brädet). Texten i `Special.SUMMON` ("a card of your choice") ska ändras när den byggs.
+- **STUDY (Academics):** drar ett kort när kortet läggs (som Battlecry: Draw a card i Hearthstone).
+
 ### Deck (`deck.py`) – under diskussion, inte bestämt
 
 Riktning som diskuterats:
@@ -180,10 +217,6 @@ Riktning som diskuterats:
 - Ska alla lekar för en fraktion vara identiska, eller ska spelaren kunna välja kort?
 - Vem bygger leken när ett spel startar: spelaren, spelet eller en meny?
 - När en ghoul äter ett kort, får den kortets grundvärden eller värdena kortet hade när det dog?
-- En action per tur, eller får alla kort i armén anfalla en gång var (som i Hearthstone)?
-- Ska målet slå tillbaka vid anfall (som i Hearthstone)?
-- Ska ett nytt kort få anfalla samma tur som det läggs ("summoning sickness" i Hearthstone)?
-- Ska armén ha ett max antal kort (Hearthstone: 7)?
 - Vad heter resursen? (Dread, Resolve, Devotion, Omen, Ichor …)
 - Är Seal of Apep för stark nu när den också skyddar mot ☩-förlust när kort dör?
 - Ritualmålet 15 och `RESOURCE_PER_TURN = 1` ska provas i spel.
@@ -204,4 +237,14 @@ Riktning som diskuterats:
 
 **Byggt 2026-11-18:** ☩ sjunker när ett kort dör, ritualen avgörs efter motståndarens svar, Stress. Kontrollerat med 300 matcher med slumpbotar (inga krascher, inget hängde sig; ritualseger 231, hjälte dödad 69; Academics 102, Ghouls 198) och 13 riktade regelkontroller. Stress uppstår inte i vanliga matcher (leken på 50 kort tar inte slut), bara i specialfallet med tomma lekar, där spelet nu tar slut. Testskripten ligger i scratchpad och finns inte i projektet.
 
+**Byggt 2026-11-18, senare:** alla redo kort anfaller en gång per tur, med summoning sickness. 300 matcher med slumpbotar: ritualseger 92, hjälte dödad 208 (före: 231/69); Academics 82, Ghouls 218; i genomsnitt 26 turer (före: 35). Anfall har alltså blivit mycket starkare än ritualen, och Ghouls vinner nästan 3 av 4. Slumpbotar säger lite om riktig balans.
+
+**Motskada byggd 2026-11-18.** 300 matcher: ritualseger 53, hjälte dödad 247; Academics 79, Ghouls 221; 26 turer i snitt. Motskadan gjorde alltså inte anfall svagare, tvärtom: figurerna dör fortare, armén töms, och hjälten kan bara anfallas när armén är tom. Academics (svaga figurer) straffas hårdast. **Balans görs inte på slumpbotar:** först AI-motståndaren, sedan balans med den.
+
+**AI byggd 2026-11-18.** SmartAI slår RandomAI i 56 av 60 matcher som Academics och 59 av 60 som Ghouls. 100 matcher SmartAI mot SmartAI (`simulate.py 100`): Ghouls 78 %, Academics 22 %; ritualseger 56 %, hjälte dödad 44 %; den som började vann 54 %; i snitt 21 turer. **Fynd om ekonomin (inte beslutat):** med +1 resurs per tur och ungefär 10–13 egna turer per match kostar ett ritualkort (4) en tredjedel av all resurs man får. Ritualkort spelas därför nästan aldrig, inte ens av SmartAI som sparar. `RESOURCE_PER_TURN` och ritualkortens kostnad bör provas.
+
 **Mekanik före grafik.** Grafiken (t.ex. `PygameUI`) väntar tills listan med gränssnittsmetoder är stabil: varje ny metod (motståndarens bräde, text efter anfall, Stress, "ritualen är nästan klar") måste annars skrivas i både `TerminalUI` och `PygameUI`.
+
+**AI-motståndare före grafik (beslutat 2026-11-18).** Användaren vill inte bygga om gränssnittet efteråt. Idag frågar `Game` samma `ui` om valen för båda spelarna, så en AI kräver att "vem som väljer" skiljs från "vad som visas".
+
+**Väntar till grafiken (beslutat 2026-11-18):** text efter anfall och liknande visning, mulligan (svårt att få känsla för i text). Ångra i målvalet: inte nu.

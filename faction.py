@@ -37,3 +37,8 @@ class Faction:
 
    def create_cards(self):
       return [copy.deepcopy(card) for card in self.cards]
+
+   # Fraktionen ändras aldrig under en match (spelarna får egna kopior av korten),
+   # så när AI:n kopierar spelet för att prova ett drag kan kopian dela fraktionen.
+   def __deepcopy__(self, memo):
+      return self
