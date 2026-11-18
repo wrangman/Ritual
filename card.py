@@ -34,7 +34,7 @@ class Rarity(Enum):
 # Namnet säger VILKEN förmåga det är, värdet är texten som visas för spelaren.
 class Special(Enum):
    # Alla fraktioner
-   TAUNT = "Enemies must attack this card first"
+   GUARD = "Enemies must attack this card first"
    SUMMON = "Summons a card of your choice from your deck"
 
    # Ghouls, figurer
@@ -57,7 +57,7 @@ class Special(Enum):
    VEIL_OF_TIAMAT = "One of your ritual cards cannot be attacked until your next turn"
    SCALES_OF_LEVIATHAN = "Gives one of your ritual cards extra armor and magic"
    SEAL_OF_APEP = "Your ritual cannot be lowered or stolen until your next turn"
-   KISS_OF_LILITH = "Gives one of your cards Taunt until your next turn"
+   KISS_OF_LILITH = "Gives one of your cards Guard until your next turn"
    CURSE_OF_CHORONZON = "The next enemy card that attacks one of your ritual cards takes the same damage"
 
    # Academics, figurer
@@ -85,7 +85,7 @@ class Special(Enum):
    # Academics, spells som skyddar ritual
    SEAL_OF_THE_BLACK_SUN = "Your ritual cards take no melee damage until your next turn"
    MIRROR_OF_NITOCRIS = "The next melee attack on one of your cards hits the attacker instead"
-   WARD_OF_THE_UNBEGOTTEN = "One of your cards gets Taunt and extra armor until your next turn"
+   WARD_OF_THE_UNBEGOTTEN = "One of your cards gets Guard and extra armor until your next turn"
    CODEX_OF_THE_ELEVEN_KEYS = "One of your ritual cards gets extra magic and health"
 
 
@@ -164,6 +164,9 @@ class CreatureCard(Card):
               f"magic={self.magic!r}, health={self.health!r}, ritual={self.ritual!r}, "
               f"special={self.special!r}, rarity={self.rarity!r})")
 
+   def has_guard(self):
+      return self.special == Special.GUARD
+   
    def is_dead(self):
       return self.health <= 0
       

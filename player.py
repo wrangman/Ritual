@@ -1,8 +1,8 @@
 """
 A player: their faction, deck, hand, army on the board and graveyard.
 
-Player moves cards between these places and asks the person at the
-terminal what to do on their turn.
+Player moves cards between these places and knows the rules about its
+own cards. It never talks to the terminal: that is TerminalUI's job.
 """
 
 __author__ = "Johan Wrangö"
@@ -10,7 +10,6 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 from hero import Hero
-import terminal_ui
 from card import SpellCard
 from deck import Deck
 
@@ -90,57 +89,28 @@ class Player:
             return True
       return False
 
-   # Visar hand och armé och frågar vad spelaren vill göra:
-   #   siffra = lägg det kortet från handen
-   #   bokstav = gör en action med det kortet i armén
-   #   0 = passa
-   # Returnerar två saker: vad spelaren valde ("card", "action" eller "pass") och vilket kort.
-   def choose_move(self, can_play, can_act):
-      print("Hero:")
-      print(terminal_ui.show_hero(self))
-
-      print("Hand:")
-      print(terminal_ui.show_hand(self))
-      if self.army:
-         print("Army:")
-         print(terminal_ui.show_army(self))
-
-      # Frågan visar bara de val som går just nu
-      options = []
-      if can_play:
-         options.append(f"1-{len(self.hand)} play a card")
-      if can_act:
-         options.append(f"a-{terminal_ui.LETTERS[len(self.army) - 1]} act with a card")
-      options.append("0) pass")
-      question = ", ".join(options) + ": "
-
-      while True:
-         answer = input(question).strip().lower()
-
-         if answer == "0":
-            return "pass", None
-
-         if can_play and answer.isdigit() and 1 <= int(answer) <= len(self.hand):
-            return "card", self.hand[int(answer) - 1]
-
-         if can_act and len(answer) == 1 and answer in terminal_ui.LETTERS[:len(self.army)]:
-            card = self.army[terminal_ui.LETTERS.index(answer)]
-            if card.can_attack():
-               return "action", card
-            print(f"{card.get_name()} cannot act.")
-            continue
-
-         print("Not a valid choice.")
-
-
    def clear_dead_cards(self):
       for card in self.get_army():
          if card.is_dead(): 
             self.kill_card(card)
 
 
-   def attack(self, attacker, target):
-      damage = attacker.damage_against()
+   def get_targets(self):
+      valid_targets = []
+
+      for target in self.get_army():
+         if target.has_guard():
+            valid_targets.append(target)
+
+      if valid_targets:
+         return valid_targets
+      
+      else:
+         if len(self.get_army()) > 0:
+            return self.get_army()
+         else:
+            return [self.get_hero()] #expects list datatype 
+
 
    # Get methods
    def get_name(self):

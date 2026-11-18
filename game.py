@@ -8,10 +8,13 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 
 class Game:
-   def __init__(self, player1, player2):
+   # ui är det som visar spelet och frågar spelarna, till exempel en TerminalUI.
+   # Game vet inte om det är en terminal eller grafik, bara att ui har samma metoder.
+   def __init__(self, player1, player2, ui):
       self.player1 = player1
       self.player2 = player2
       self.current_player = player1
+      self.ui = ui
 
    def start(self):
       self.player1.draw_cards(5)
@@ -33,16 +36,23 @@ class Game:
          if not can_play and not can_act:
             break   # inget kvar att göra
 
-         move, card = current_player.choose_move(can_play, can_act)
+         move, card = self.ui.choose_move(current_player, can_play, can_act)
 
          if move == "card":
             current_player.play_card(card)
             played_card = True
+
          elif move == "action":
-            print(f"{card.get_name()} acts. (Attacks are not built yet.)")   # anfall byggs i nästa steg
+            targets = self.get_opponent().get_targets()
+            target = self.ui.choose_target(targets)
+            self.attack(card, target)
+            
             did_action = True
+
          else:
             break   # pass
+
+         if self.determine_winner(): break
 
    def switch_turn(self):
       if self.current_player is self.player1:
@@ -52,6 +62,13 @@ class Game:
 
    def get_opponent(self):
       return self.player2 if self.current_player is self.player1 else self.player1
+
+
+   def attack(self, attacker, target):
+      damage = attacker.damage_against(target)
+      target.take_damage(damage)
+      self.get_opponent().clear_dead_cards()
+
 
    def determine_winner(self):
 
@@ -67,10 +84,12 @@ class Game:
       else:
          return None
 
-
    def run(self):
       self.start()   
 
       while not self.determine_winner():
          self.play_turn()
          self.switch_turn()
+
+      winner = self.determine_winner()
+      self.ui.show_winner(winner)

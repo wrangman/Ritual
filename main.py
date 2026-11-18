@@ -12,15 +12,16 @@ import os
 import subprocess
 from game import Game
 from player import Player
+from terminal_ui import TerminalUI
 from factions.ghouls import ghouls
 from factions.academics import academics
 
 
-subprocess.run("cls" if os.name == "nt" else "clear", shell=True) 
+subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
 
 player1 = Player("Joe", academics)
 player2 = Player("Moe", ghouls)
 
-game = Game(player1, player2)
+game = Game(player1, player2, TerminalUI())
 game.run()
 

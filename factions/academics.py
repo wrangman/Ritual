@@ -80,7 +80,7 @@ tier_3 = [
                 magic=3,
                 health=6,
                 ritual=1,
-                special=Special.TAUNT,
+                special=Special.GUARD,
                 rarity=Rarity.EPIC),
 
    CreatureCard(FactionName.ACADEMICS, "Herbert West",

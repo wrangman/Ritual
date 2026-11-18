@@ -15,7 +15,7 @@ Ett Lovecraft-inspirerat kortspel i Python (kursen Prog2), spelat i terminalen.
 
 Hjälten är den som utför ritualen. Den har två mätare: ❤️ hälsa (30) och ☩ ritual (mål preliminärt 15, ska provas i spel). Båda ska hållas så höga som möjligt. Motståndaren kan störa på två sätt: sänka ens ritual eller skada hjälten.
 
-Två vägar till seger: bygg klart sin ritual, eller ta sig förbi motståndarens armé och slå ut hjälten (som Hearthstone, Taunt skyddar). När motståndarens bräde är tomt anfaller man hjälten. Inspiration: Android: Netrunner (agenda points eller flatline) och Hearthstone (hjälte med hälsa, Taunt).
+Två vägar till seger: bygg klart sin ritual, eller ta sig förbi motståndarens armé och slå ut hjälten (Guard skyddar, som Taunt i Hearthstone). När motståndarens bräde är tomt anfaller man hjälten. Inspiration: Android: Netrunner (agenda points eller flatline) och Hearthstone (hjälte med hälsa, Taunt).
 
 Strategin är att balansera: försvara sin ritual och sin hjälte, öka ritualen, och ha både försvarande och anfallande kort.
 
@@ -67,7 +67,8 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 
 ### Terminalen (`terminal_ui.py`)
 
-- All visning i terminalen, till exempel färger, ligger i `terminal_ui.py`. Korten vet inget om färger (separation of concerns, som i Model-View-Controller).
+- All visning och inmatning i terminalen ligger i klassen `TerminalUI` i `terminal_ui.py`. Korten och spelarna vet inget om terminalen (separation of concerns, som i Model-View-Controller). `Player` gör aldrig `print` eller `input`.
+- `Game` får sitt gränssnitt utifrån: `Game(player1, player2, TerminalUI())`, och anropar bara `self.ui.choose_move(...)`, `self.ui.choose_target(...)` osv. Spelet görs för terminalen först, sedan grafik: en grafisk version (t.ex. `PygameUI`) ska ha samma metodnamn, så att `Game` inte behöver ändras (Strategy-mönstret, Gang of Four).
 - Färg per fraktion: figurer får en färg och spells en ljusare ton av samma färg. Ghouls är mörkröda, The Academics blå, Shoggoths gyllengula och The Deep Ones gröna.
 - Färgerna är 24-bitars ANSI-koder (`rgb()`). Nycklarna i `FACTION_COLORS` är `FactionName`-värden.
 
@@ -81,6 +82,11 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - I koden räknar varje klass ut sin egen skada med `damage_against(target)` (polymorfism). Spelet frågar bara kortet och behöver inte kolla vilken sorts kort det är.
 - Det finns inget `attack_type`-fält. Det togs bort för att klassen redan avgör sortens skada (YAGNI).
 - The Academics: alla deras figurer är ganska svaga. De har svårt mot till exempel Ghouls i tier 2–3, som har hög armor. Academics styrka är spells: magisk skada räknas mot målets 🪄 magic, inte mot 🛡️ armor, så spells går igenom armor.
+
+### Anfall (bestämt)
+
+- Mål väljs i ordning: finns kort med Guard får bara de anfallas. Annars får alla kort i armén anfallas. Hjälten kan bara anfallas när armén är tom.
+- Anfall i `Game.attack(attacker, target)`: anfallaren räknar skadan (`damage_against`), målet tar den (`take_damage`), motståndaren städar sin armé (`clear_dead_cards`).
 
 ### Tur (bestämt)
 
@@ -106,7 +112,7 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - I koden är ritualkort klassen `RitualCard(CreatureCard)` i `card.py`. Den är en egen klass eftersom beteendet skiljer sig: `can_attack()` ger `False` (för `CreatureCard` ger den `True`), och bara ritualkort kan få skydds-spells. Spelet känner igen dem med `isinstance(card, RitualCard)`.
 - Sätt att bygga ritual: ritualkort (snabbt, men oskyddat), vanliga kort med lite ☩ (långsamt men säkrare) och spells.
 - Ritual kan stjälas, men bara av fraktioner med dark magic: Ghouls och Academics.
-- Ritualkort skyddas med `TAUNT` på starka melee-kort (fienden måste anfalla dem först, som Taunt i Hearthstone) och med skydds-spells (Ghouls: Veil of Tiamat, Scales of Leviathan, Seal of Apep, Kiss of Lilith, Curse of Choronzon).
+- Ritualkort skyddas med `GUARD` på starka melee-kort (fienden måste anfalla dem först, som Taunt i Hearthstone; namnet Guard kommer från The Elder Scrolls: Legends) och med skydds-spells (Ghouls: Veil of Tiamat, Scales of Leviathan, Seal of Apep, Kiss of Lilith, Curse of Choronzon).
 - Skydds-spellernas namn har anti-kosmisk inspiration: gamla kaosväsen och antigudar (Tiamat, Leviathan, Apep, Lilith, Choronzon).
 
 ### Deck (`deck.py`) – under diskussion, inte bestämt

@@ -140,7 +140,7 @@ tier_3 = [
                 magic=0,
                 health=4,
                 ritual=1,
-                special=Special.TAUNT,
+                special=Special.GUARD,
                 rarity=Rarity.EPIC),
 
    CreatureCard(FactionName.GHOULS, "Butcher of the Underworld",
@@ -160,7 +160,7 @@ tier_3 = [
                 magic=0,
                 health=6,
                 ritual=3,
-                special=Special.TAUNT,
+                special=Special.GUARD,
                 rarity=Rarity.EPIC),
 
    CreatureCard(FactionName.GHOULS, "Catacomb Tyrant",
