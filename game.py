@@ -33,6 +33,13 @@ class Game:
       did_action = False
       current_player = self.current_player
 
+      # Ritualen avgörs först, innan något annat händer i turen (före dragning och ny ☩).
+      # Spelaren nådde målet tidigare och motståndaren har haft en tur på sig att svara.
+      # Når ritualen fortfarande målet vinner spelaren. (Som Felidar Sovereign i Magic.)
+      if current_player.reached_ritual():
+         current_player.complete_ritual()
+         return
+
       # Buffar som spelaren lade "until your next turn" går ut nu
       self.remove_expired_buffs(this_turn_only=False)
 
@@ -44,10 +51,15 @@ class Game:
       if self.is_over():
          return
 
-      current_player.draw_cards(1) #always draw card at your turn
+      drawn = current_player.draw_cards(1) #always draw card at your turn
+      if not drawn:
+         stress = current_player.get_stress()
+         self.ui.show_message(f"{current_player.get_name()} has no cards left. "
+                              f"Stress {stress}: the hero takes {stress} damage.")
       current_player.refill_resource(self.RESOURCE_PER_TURN)
 
-      # Korten på brädet ger sin ☩ till hjälten. Når man målet vinner man direkt.
+      # Korten på brädet ger sin ☩ till hjälten. Når man målet vinner man först i början
+      # av sin nästa tur, om ritualen fortfarande når målet då.
       current_player.collect_ritual()
       if self.is_over():
          return
@@ -93,6 +105,11 @@ class Game:
             break   # pass
 
          if self.is_over(): break
+
+      # Varning till motståndaren: det här är sista chansen att stoppa ritualen
+      if not self.is_over() and current_player.reached_ritual():
+         self.ui.show_message(f"☩ The ritual of {current_player.get_name()} is nearly complete! "
+                              f"Lower it before their next turn, or it is over.")
 
    def switch_turn(self):
       if self.current_player is self.player1:
@@ -160,10 +177,10 @@ class Game:
       self.player2.clear_dead_cards()
 
 
-   # Har player vunnit? Ja om motståndarens hjälte är död eller om player har nått sitt ritualmål.
-   #TODO: 3 rounds with ritual goal before win condition!
+   # Har player vunnit? Ja om motståndarens hjälte är död (gäller direkt) eller om
+   # player:s ritual är klar (avgörs i början av player:s tur, se play_turn).
    def has_won(self, player, opponent):
-      return opponent.get_hero().is_dead() or player.reached_ritual()
+      return opponent.get_hero().is_dead() or player.is_ritual_complete()
 
    # Matchen är slut när någon har vunnit, eller båda samtidigt (oavgjort).
    def is_over(self):

@@ -26,18 +26,26 @@ class Player:
       self.graveyard = []   # döda; kastade kort
       self.resource = 0     # betalar för korten man lägger (namnet är inte bestämt än)
       self.overload = 0     # så mycket mindre resurs man får nästa tur (lånat i förväg)
+      self.stress = 0       # växer varje gång man ska dra ur en tom lek (Fatigue i Hearthstone)
+      self.ritual_complete = False   # sant när ritualen höll målet hela motståndarens tur
 
    def __str__(self):
       return (f"{self.name} ({self.faction.get_name().value}) – "
               f"☩ {self.hero.get_ritual()}/{self.faction.get_ritual_goal()}, "
-              f"hand: {len(self.hand)}, lek: {len(self.deck)}")
+              f"hand: {len(self.hand)}, lek: {len(self.deck)}, stress: {self.stress}")
 
    # Handlingar
    # Drar kort från leken till handen. Returnerar de dragna korten,
    # som kan vara färre än amount om leken tar slut.
+   # Stress (Fatigue i Hearthstone): för varje kort som saknas ökar stressen med 1,
+   # och hjälten tar så mycket skada (1, 2, 3 ...). Då kan spelet aldrig fastna.
    def draw_cards(self, amount=1):
       drawn = self.deck.draw(amount)
       self.hand.extend(drawn)
+      missing = amount - len(drawn)
+      for _ in range(missing):
+         self.stress += 1
+         self.hero.take_damage(self.stress)
       return drawn
 
    # Spelar ett kort från handen och betalar dess kostnad. Figurer hamnar i armén.
@@ -53,7 +61,11 @@ class Player:
          self.army.append(card)
 
    # Ett kort i armén dör och flyttas till döda högen. Buffarna försvinner.
+   # Ritualen vilar på korten: när ett kort dör tappar hjälten den ☩ kortet ger just nu.
+   # Gäller alla dödsfall, även när man offrar sitt eget kort. Alla dödsfall går igenom
+   # den här metoden, så regeln står bara här. Under Seal of Apep gör lose_ritual ingenting.
    def kill_card(self, card):
+      self.hero.lose_ritual(card.get_ritual())   # läses innan buffarna tas bort
       self.army.remove(card)
       card.clear_buffs()
       self.graveyard.append(card)
@@ -101,6 +113,17 @@ class Player:
    # "Mest ritual" kräver att två spelare jämförs och avgörs därför av spelet, inte här.
    def reached_ritual(self):
       return self.hero.get_ritual() >= self.faction.get_ritual_goal()
+
+   # Ritualen är klar: spelaren nådde målet och hade det kvar efter motståndarens tur.
+   # Game avgör när (i början av spelarens tur), Player kommer bara ihåg det.
+   def complete_ritual(self):
+      self.ritual_complete = True
+
+   def is_ritual_complete(self):
+      return self.ritual_complete
+
+   def get_stress(self):
+      return self.stress
 
    # Utplånad: inga kort på brädet, i handen eller i leken
    def is_wiped_out(self):

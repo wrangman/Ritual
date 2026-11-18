@@ -2,7 +2,7 @@
 
 ## Arbetssätt
 
-- Användaren skriver koden själv. Beskriv steg för steg vad som ska byggas, ett steg i taget, och skriv inte koden åt hen. Hjälp till med kod bara när hen ber om det.
+- Grundnivån av spelet (det som behövdes för kursen) skrev användaren själv. Från 2026-11-18 skriver Claude koden för mer komplicerade saker och grafiken. Eleverna får också använda AI till sådant. Koden ska fortfarande vara lätt att läsa och visa för elever: tydliga namn, svenska kommentarer som förklarar *varför*, och samma stil som resten av projektet.
 - Sluta ge snabblösningar. Ge alltid bästa praxis och absolut bästa OOP.
 - Basera designförslag på etablerade källor (designmönster, hur riktiga kortspelsmotorer är byggda) och ange källorna. Gissa inte. Skilj tydligt på vad källan faktiskt säger och vad som är din egen tillämpning på projektet.
 - Tänk igenom ansvarsfördelning och relationer mellan klasser innan du föreslår kod. Fråga om designbeslut hellre än att gissa.
@@ -20,7 +20,7 @@ Två vägar till seger: bygg klart sin ritual, eller ta sig förbi motståndaren
 Strategin är att balansera: försvara sin ritual och sin hjälte, öka ritualen, och ha både försvarande och anfallande kort.
 
 **Vinstvillkor** (man vinner om något av dessa gäller):
-1. Man når sitt ritualmål.
+1. Man har nått sitt ritualmål och har det kvar i början av sin nästa tur, alltså efter att motståndaren har fått svara under sin tur (se Ritual).
 2. Motståndarens hjälte har 0 hälsa.
 3. Motståndaren är utplånad: inga kort på brädet och inga kort kvar (varken i hand eller lek). *Oklart om detta ska finnas kvar.*
 4. Man har byggt upp mer ritual än motståndaren. *Oklart om detta ska finnas kvar.*
@@ -101,6 +101,7 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - Turen går över när inget mer går att göra, eller när spelaren väljer "0) end turn", till exempel för att spara resurs till ett dyrt kort.
 - Finns inget kort som kan göra en action hoppas den över automatiskt.
 - Man drar 1 kort i början av sin egen tur, även första turen, som i Hearthstone. Då har man fler val när man spelar.
+- **Stress (byggt):** Fatigue från Hearthstone med namnet Stress (ordet kommer från Darkest Dungeon, men mekaniken är Hearthstones). Varje gång man ska dra ett kort ur en tom lek ökar `Player.stress` med 1 och hjälten tar så mycket skada (1, 2, 3 …). Gäller alla dragningar (även spells som DrawCards), men inte att titta på kort (`reveal_top_cards`, Forbidden Codex). Logiken ligger i `Player.draw_cards()`. Man kan förlora på sin egen stress. Löser att spelet hänger sig när båda har slut på kort. Stressen visas i statusraden (`show_hero`, när den är större än 0), och `Game` visar ett meddelande när dragningen i början av turen ger stress.
 
 ### Resursen för att lägga kort (bestämt och byggt)
 
@@ -156,7 +157,10 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 
 - **Ritualkort** är bara tier 4-korten: de finns till för att bygga ritual och kan inte slåss (⚔️ 0). Andra kort kan också ha lite ☩, men räknas inte som ritualkort.
 - I koden är ritualkort klassen `RitualCard(CreatureCard)` i `card.py`. Den är en egen klass eftersom beteendet skiljer sig: `can_attack()` ger `False` (för `CreatureCard` ger den `True`), och bara ritualkort kan få skydds-spells. Spelet känner igen dem med `isinstance(card, RitualCard)`.
-- **När ☩ räknas (bestämt):** i början av sin tur får hjälten ☩ från alla egna kort på brädet (`Player.collect_ritual()` → `Hero.add_ritual()`), så länge korten ligger kvar. Därför är det viktigt att skydda ritualkorten. Når man målet vinner man direkt. Målet 15 kan behöva höjas.
+- **När ☩ räknas (bestämt):** i början av sin tur får hjälten ☩ från alla egna kort på brädet (`Player.collect_ritual()` → `Hero.add_ritual()`), så länge korten ligger kvar. Därför är det viktigt att skydda ritualkorten. Målet 15 kan behöva höjas.
+- **När ritualen avgörs (byggt):** man vinner inte direkt när man når målet. Motståndaren får en tur att svara (sänka ritualen, döda ritualkort, slå ut hjälten). I början av ens nästa tur, **före** allt annat (buffar, triggers, dragning, `collect_ritual()`), vinner man om ritualen fortfarande når målet. Källa: Magic: The Gathering, Felidar Sovereign ("At the beginning of your upkeep, if you have 40 or more life, you win the game"). I koden: `play_turn()` kollar `reached_ritual()` först och anropar då `Player.complete_ritual()`. `Game.has_won()` frågar `is_ritual_complete()` (och hjältedöd, som gäller direkt). Spelet visar "The ritual of … is nearly complete!" i slutet av turen när målet är nått, så att motståndaren vet att det är sista chansen. Att hålla målet i 3 rundor är bortvalt: ritualen fortsätter växa, så det blir nästan samma sak som ett högre mål.
+- **När ett kort dör sjunker ritualen (byggt):** hjälten tappar kortets ☩ just nu (`card.get_ritual()`, ett kort med ☩ 3 ger −3), en gång. Inte allt kortet bidragit med under spelet. Gäller **alla** dödsfall: anfall, spells, blodpris, Infect och eget offer (SACRIFICE, DEVOUR). Att offra ett kort med ☩ blir då ett strategiskt val. Byggs i `Player.kill_card()` (alla dödsfall går igenom den) med `hero.lose_ritual()`, och ☩ läses innan `clear_buffs()`. Kort som återupplivas (Resurrect) ger ingen ☩ direkt, bara i början av nästa tur som vanligt.
+- **Seal of Apep skyddar även mot detta** ("Your ritual cannot be lowered or stolen"): under Seal tappar man ingen ☩ när kort dör, inte heller vid eget offer. Ska provas i spel, den kan bli för stark i sista turen före vinsten.
 - Sätt att bygga ritual: ritualkort (snabbt, men oskyddat), vanliga kort med lite ☩ (långsamt men säkrare) och spells.
 - Ritual kan stjälas, men bara av fraktioner med dark magic: Ghouls och Academics.
 - Ritualkort skyddas med `GUARD` på starka melee-kort (fienden måste anfalla dem först, som Taunt i Hearthstone; namnet Guard kommer från The Elder Scrolls: Legends) och med skydds-spells (Ghouls: Veil of Tiamat, Scales of Leviathan, Seal of Apep, Kiss of Lilith, Curse of Choronzon).
@@ -181,7 +185,7 @@ Riktning som diskuterats:
 - Ska ett nytt kort få anfalla samma tur som det läggs ("summoning sickness" i Hearthstone)?
 - Ska armén ha ett max antal kort (Hearthstone: 7)?
 - Vad heter resursen? (Dread, Resolve, Devotion, Omen, Ichor …)
-- Idé: måste man hålla ritualmålet i 3 rundor för att vinna? Provas när spelet går att balansera (TODO i `Game.has_won`).
+- Är Seal of Apep för stark nu när den också skyddar mot ☩-förlust när kort dör?
 - Ritualmålet 15 och `RESOURCE_PER_TURN = 1` ska provas i spel.
 
 ## Läget (2026-11-18)
@@ -195,8 +199,9 @@ Riktning som diskuterats:
 - Hjälteförmågorna Feast of Graves och The Eleventh Seal.
 - Visa i terminalen att ett kort är smittat (Infect) eller att Mirror/Curse väntar.
 - Visa motståndarens bräde under ens egen tur, och en text efter anfall (hur mycket skada, vilket kort som dog).
-- Spelet kan hänga sig om båda spelarna har slut på kort och ingen kan anfalla.
 - Mulligan och slantsingling.
 - Shoggoths och The Deep Ones (bara Academics och Ghouls är byggda).
 
-**Förslag på nästa steg:** commit, sedan speltesta själv; därefter balans (en smartare bot för jämförelser) och de öppna frågorna ovan.
+**Byggt 2026-11-18:** ☩ sjunker när ett kort dör, ritualen avgörs efter motståndarens svar, Stress. Kontrollerat med 300 matcher med slumpbotar (inga krascher, inget hängde sig; ritualseger 231, hjälte dödad 69; Academics 102, Ghouls 198) och 13 riktade regelkontroller. Stress uppstår inte i vanliga matcher (leken på 50 kort tar inte slut), bara i specialfallet med tomma lekar, där spelet nu tar slut. Testskripten ligger i scratchpad och finns inte i projektet.
+
+**Mekanik före grafik.** Grafiken (t.ex. `PygameUI`) väntar tills listan med gränssnittsmetoder är stabil: varje ny metod (motståndarens bräde, text efter anfall, Stress, "ritualen är nästan klar") måste annars skrivas i både `TerminalUI` och `PygameUI`.

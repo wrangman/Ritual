@@ -97,7 +97,11 @@ class TerminalUI:
       else:
          color = colors[0]   # samma färg som fraktionens figurer
       goal = player.get_faction().get_ritual_goal()
-      return f"+. {color}{hero.short()}{RESET}  (ritual goal ☩ {goal})"
+      text = f"+. {color}{hero.short()}{RESET}  (ritual goal ☩ {goal}, deck: {len(player.get_deck())}"
+      # Stressen visas först när leken är slut och den har börjat växa
+      if player.get_stress() > 0:
+         text += f", stress {player.get_stress()}"
+      return text + ")"
 
    # Shows who won. Game decides the winner, the terminal only shows it.
    def show_winner(self, player):
