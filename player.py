@@ -15,7 +15,9 @@ from deck import Deck
 
 
 class Player:
-   MAX_ARMY = 7   # högst så många kort på brädet, som i Hearthstone
+   MAX_ARMY = 7        # högst så många kort på brädet, som i Hearthstone
+   MAX_HAND = 10       # högst så många kort i handen, som i Hearthstone
+   MAX_RESOURCE = 10   # resursen växer med 1 per tur upp till så här mycket, som mana i Hearthstone
 
    # controller väljer åt spelaren: en HumanController (via terminalen) eller en AI.
    # Player anropar aldrig controllern själv, det gör Game.
@@ -30,7 +32,9 @@ class Player:
       self.army = []        # korten spelaren har på brädet
       self.graveyard = []   # döda; kastade kort
       self.resource = 0     # betalar för korten man lägger (namnet är inte bestämt än)
+      self.max_resource = 0 # så mycket resurs man får varje tur: växer med 1 per tur (mana crystals)
       self.overload = 0     # så mycket mindre resurs man får nästa tur (lånat i förväg)
+      self.burned = []      # kort som försvann för att handen var full
       self.stress = 0       # växer varje gång man ska dra ur en tom lek (Fatigue i Hearthstone)
       self.ritual_complete = False   # sant när ritualen höll målet hela motståndarens tur
 
@@ -44,9 +48,11 @@ class Player:
    # som kan vara färre än amount om leken tar slut.
    # Stress (Fatigue i Hearthstone): för varje kort som saknas ökar stressen med 1,
    # och hjälten tar så mycket skada (1, 2, 3 ...). Då kan spelet aldrig fastna.
+   # Är handen full (10 kort) försvinner kortet i stället (som i Hearthstone).
    def draw_cards(self, amount=1):
       drawn = self.deck.draw(amount)
-      self.hand.extend(drawn)
+      for card in drawn:
+         self.add_to_hand(card)
       missing = amount - len(drawn)
       for _ in range(missing):
          self.stress += 1
@@ -87,8 +93,22 @@ class Player:
       self.hand.remove(card)
       self.graveyard.append(card)
 
-   # Ett dött kort återställs till spelarens hand
+   # Ett kort ska till handen. Finns det inte plats (10 kort) försvinner det i stället,
+   # som när man drar ett kort med full hand i Hearthstone. Alla kort som ska till handen
+   # går igenom den här metoden, så regeln står bara här.
+   def add_to_hand(self, card):
+      if self.is_hand_full():
+         self.burned.append(card)
+      else:
+         self.hand.append(card)
+
+   def is_hand_full(self):
+      return len(self.hand) >= self.MAX_HAND
+
+   # Ett dött kort återställs till spelarens hand. Är handen full stannar det i gravhögen.
    def restore_card(self, card):
+      if self.is_hand_full():
+         return
       self.graveyard.remove(card)
       self.hand.append(card)
       
@@ -109,7 +129,7 @@ class Player:
       return self.deck.draw(amount)
 
    def take_into_hand(self, card):
-      self.hand.append(card)
+      self.add_to_hand(card)
 
    def return_to_deck_bottom(self, card):
       self.deck.put_on_bottom(card)
@@ -141,12 +161,13 @@ class Player:
    def is_wiped_out(self):
       return not self.army and not self.hand and len(self.deck) == 0
 
-   # Resursen fylls på i början av turen. Det som inte används sparas till nästa tur,
-   # som credits i Android: Netrunner. Overload från förra turen dras av, men aldrig under 0.
-   def refill_resource(self, amount):
-      self.resource += amount - self.overload
-      if self.resource < 0:
-         self.resource = 0
+   # Resursen fylls på i början av turen, som mana i Hearthstone: max_resource växer
+   # med 1 varje tur (upp till 10) och resursen fylls upp till max_resource.
+   # Det som inte användes förra turen sparas inte. Overload från förra turen dras av,
+   # men aldrig under 0.
+   def refill_resource(self):
+      self.max_resource = min(self.max_resource + 1, self.MAX_RESOURCE)
+      self.resource = max(0, self.max_resource - self.overload)
       self.overload = 0
 
    # Extra resurs mitt i turen, till exempel från en spell
@@ -261,6 +282,12 @@ class Player:
 
    def get_resource(self):
       return self.resource
+
+   def get_max_resource(self):
+      return self.max_resource
+
+   def get_burned(self):
+      return list(self.burned)
 
    def get_overload(self):
       return self.overload

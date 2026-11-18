@@ -55,7 +55,7 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - `Rarity` är en Enum i `card.py` (COMMON, UNCOMMON, RARE, EPIC, LEGENDARY). Standard är `Rarity.COMMON`.
 - `Special` är en Enum i `card.py`. Namnet (t.ex. `DEVOUR`) säger vilken förmåga det är, värdet är texten spelaren ser. `special=None` betyder ingen förmåga.
 - `__str__` ger full visning med ikoner: ⚔️ attack, 🪄 magic, ❤️ health, 🛡️ armor, ☩ ritual.
-- `short()` ger kompakt visning för brädet: `Namn [⚔️ 3 ❤️ 4 🛡️ 3 ☩ 3]`. ⚔️ och 🪄 visas bara om värdet är större än 0. Mellanslaget efter ikonen behövs: terminalen i VS Code ritar ⚔️, ❤️ och 🛡️ två rutor breda men räknar dem som en, så utan mellanslag hamnar siffran ovanpå ikonen.
+- `short()` ger kompakt visning för brädet: `Namn [⚔️ 3 ❤️ 4 🛡️ 3 ☩ 3]`. ⚔️ och 🪄 visas bara om värdet är större än 0. Mellanslaget efter ikonen behövs: terminalen i VS Code ritar ⚔️, ❤️ och 🛡️ två rutor breda men räknar dem som en, så utan mellanslag hamnar siffran ovanpå ikonen. ☩ har också ett mellanslag (provat utan 2026-11-18, det blev för tätt). Ett mellanslag mellan stats (två provades, det var inte bättre).
 - Koden använder 3 mellanslags indrag.
 
 ### Hjälte (`hero.py`)
@@ -75,6 +75,9 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - `Game` får sitt gränssnitt utifrån: `Game(player1, player2, ui)`. `Game` använder `ui` bara för att **visa** (`show_message`, `show_winner`, `show_draw`). **Valen** görs av spelarens controller (se AI och controllers). En mänsklig spelares `HumanController` frågar via `TerminalUI` (`choose_move(game, player, moves)`, `choose_target`, `choose_card`). Spelet görs för terminalen först, sedan grafik: en grafisk version (t.ex. `PygameUI`) ska ha samma metodnamn, så att `Game` inte behöver ändras (Strategy-mönstret, Gang of Four).
 - **Grundspelet ska alltid gå att spela i terminalen** (användaren vill kunna visa det), även när grafiken finns. Terminalen behöver inte alla finesser.
 - `TerminalUI.choose_move` kollar inga regler själv: den visar motståndarens hjälte och armé, den egna sidan, och väljer bland de lagliga dragen från `Game` (siffra = kort i handen, bokstav = anfall, 0 = avsluta turen; har kortet flera mål frågas målet efteråt).
+- **Vad som hände (byggt 2026-11-18):** efter varje drag (både spelarens och AI:ns) visar `Game` draget (`>> Joe plays Book of Sorrows on Morrigan Upton`) och sedan exakt vad som ändrades: ❤️/⚔️/🛡️/🪄 före → efter, döda kort, nya kort på brädet, ☩, resurs, dragna kort och statusar (Guard, Veiled ...). `Snapshot` (`snapshot.py`) tar en bild av spelet före och efter draget och jämför. Då behöver ingen effekt beskriva sitt eget resultat. Hjälten har `statuses()` som korten.
+- **Handen** visar vad varje kort gör (kortets `special`-text) på raden under. Kort som inte går att spela är grå med skälet efter (för lite resurs, fullt bräde, inget mål). Den egna armén visar för varje kort om det kan anfalla, och annars varför. Frågan räknar upp exakt vilka val som går. Har ett drag bara ett möjligt mål väljs det automatiskt (användaren vill ha det så).
+- Figurförmågor som inte är byggda (`Special.is_built()` ger `False`: DEVOUR, SACRIFICE, STUDY, SUMMON) visas med "(NOT IN THE GAME YET: does nothing)", så att kortet inte lovar något som inte händer.
 - `SilentUI` (`silent_ui.py`) visar ingenting. Används i tester, simuleringar och när AI:n provar drag på en kopia.
 - Färg per fraktion: figurer får en färg och spells en ljusare ton av samma färg. Ghouls är mörkröda, The Academics blå, Shoggoths gyllengula och The Deep Ones gröna.
 - Färgerna är 24-bitars ANSI-koder (`rgb()`). Nycklarna i `FACTION_COLORS` är `FactionName`-värden.
@@ -90,7 +93,7 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
   - `RandomAI`: slumpar bland de lagliga dragen (avslutar turen med 10 % chans). Jämförelse och krasch-sökning.
   - `SmartAI`: provar varje drag på en kopia av spelet (`Game.copy_for_simulation(move)`, `copy.deepcopy` med `SilentUI`) och betygsätter läget med `evaluate()`. Väljer bästa draget, tills inget drag gör läget bättre (`MIN_GAIN`), då avslutas turen. Principen bakom `GreedyOptimizeMove` i MetaStone. Nya kort kräver ingen ny AI-kod.
   - Betyget bygger på vikterna i `SmartAI.WEIGHTS` (hjältens hälsa, ritual, ☩ på brädet, figurernas stats, Guard, kort i handen, triggers, Seal of Apep, om ens hjälte saknar skydd m.m.). Har motståndaren nått ritualmålet ger det −300: hen vinner i början av sin tur. Vikterna är gissningar; andra vikter ger en annan spelstil (`SmartAI(weights={...})`).
-  - **Sparande:** resurs är värd det den kan köpa. Finns en figur eller ett ritualkort i handen som AI:n inte har råd med, räknas sparad resurs som en del av det kortets värde (`saving`). Utan detta spelade AI:n bara billiga kort och aldrig ritualkort.
+  - Resurs som blir kvar är värd lite (`resource` 0.1), eftersom den försvinner när turen är slut. (Det fanns en sparregel, `saving`, när resursen sparades mellan turer. Den togs bort när resursen blev som mana i Hearthstone.)
   - Begränsningar: tittar bara ett drag framåt; slumpade effekter provas en gång; spells räknas inte som något att spara till.
 - För att kopieringen ska gå snabbt delas sådant som inte ändras under en match mellan kopiorna (`__deepcopy__` returnerar `self`): effekter, fraktioner och controllers. En SmartAI-match tar ungefär 0,2 sekunder.
 - **Bara människa mot AI (beslutat 2026-11-18).** Människa mot människa är borttaget och ska inte gå längre. `main.py` startar alltid spelaren (`HumanController`) mot `SmartAI`.
@@ -132,14 +135,15 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 
 ### Resursen för att lägga kort (bestämt och byggt)
 
-*Namnet är inte bestämt. "Essence" är bortvalt; det ska låta Darkest Dungeon/Lovecraft (förslag: Dread, Resolve, Devotion, Omen, Ichor). I koden heter den tills vidare `resource` (`Player.resource`, `Game.RESOURCE_PER_TURN`, `RESOURCE_NAME` i `terminal_ui.py`), så den byts lätt.*
+*Namnet är inte bestämt. "Essence" är bortvalt; det ska låta Darkest Dungeon/Lovecraft (förslag: Dread, Resolve, Devotion, Omen, Ichor). I koden heter den tills vidare `resource` (`Player.resource`, `Player.max_resource`, `RESOURCE_NAME` i `terminal_ui.py`), så den byts lätt.*
 
 - **Overload** (som hos Shaman i Hearthstone): ett kort kan låna resurs från nästa tur. `Player.overload` dras av när resursen fylls på (`refill_resource()`), aldrig under 0.
 - Academics har två spells som ger mer att spendera nu (som Innervate i Hearthstone, men med ett pris). De ersatte Elder Sign och Litany of Unmaking, som överlappade Ward of the Unbegotten och Rite of the Thirteenth Hour. Två exemplar var, leken är kvar på 50 kort:
   - **The Silver Key** (kostnad 0): +2 resurs nu, Overload (2). Man lånar från framtiden.
   - **De Vermis Mysteriis** (kostnad 0): +2 resurs nu, den egna hjälten tar 3 skada. Man betalar med blod.
 - I koden: `Card.cost`; `Player.refill_resource()`, `gain_resource()`, `add_overload()`, `can_afford()`, `has_affordable_card()`; `Player.play_card()` drar kostnaden (och kastar `ValueError` om man inte har råd). Terminalen visar kostnaden i handen som `(2)` och vägrar kort man inte har råd med.
-- Som credits i Android: Netrunner: varje spelare får **+1 av resursen i början av sin tur**, börjar på 0 och har inget tak. Det som inte används **sparas** till nästa tur. Man kan alltså spara ihop till ett dyrt kort, till exempel ett ritualkort tidigt, men gör då mindre under tiden.
+- **Som mana i Hearthstone (ändrat 2026-11-18):** `max_resource` växer med 1 i början av varje egen tur, upp till `Player.MAX_RESOURCE = 10`, och resursen fylls upp till `max_resource` (minus overload). Det som inte används **försvinner** när turen är slut, det sparas inte. Första turen: 1, andra: 2 osv. Terminalen visar "Resource: 2 of 3". *(Tidigare: +1 per tur som sparades, som credits i Android: Netrunner. Det var för segt: med 1 per tur och ungefär 12 egna turer kunde man nästan bara lägga ett billigt kort per tur, handen växte, och ritualkort för 4 spelades nästan aldrig.)*
+- **Max 10 kort i handen (2026-11-18),** som i Hearthstone: `Player.MAX_HAND`. Alla kort som ska till handen går genom `Player.add_to_hand()`. Är handen full försvinner kortet (`Player.burned`), som när man drar med full hand i Hearthstone. Ett kort som ska tillbaka från gravhögen (Book of the Nameless Dead) stannar där.
 - Alla får lika mycket, som mana i Hearthstone: resursen är inte kopplad till health eller ritual. (Ritualen som budget valdes bort: den som leder skulle få fler kort och dra ifrån, en positiv återkopplingsloop.)
 - Varje kort har en **kostnad** (`cost`, ett eget fält på `Card`). Man får lägga så många kort man har råd med.
 - Startkostnader: figurer kostar sin tier (1–3), ritualkort (tier 4) kostar 4, Academics basic spells kostar 1, övriga spells 2, tunga spells (Necronomicon, Pnakotic Manuscripts) 3. Justeras efter speltest. Kort som behöver vara dyrare (t.ex. Shoggoths stora monster, 6–8) flyttas till högre tier eller får en egen kostnad.
@@ -219,7 +223,7 @@ Riktning som diskuterats:
 - När en ghoul äter ett kort, får den kortets grundvärden eller värdena kortet hade när det dog?
 - Vad heter resursen? (Dread, Resolve, Devotion, Omen, Ichor …)
 - Är Seal of Apep för stark nu när den också skyddar mot ☩-förlust när kort dör?
-- Ritualmålet 15 och `RESOURCE_PER_TURN = 1` ska provas i spel.
+- Ritualmålet 15 ska provas i spel, nu när resursen växer som i Hearthstone (ritualkort blir lättare att lägga, så målet kan behöva höjas).
 
 ## Läget (2026-11-18)
 
@@ -241,10 +245,10 @@ Riktning som diskuterats:
 
 **Motskada byggd 2026-11-18.** 300 matcher: ritualseger 53, hjälte dödad 247; Academics 79, Ghouls 221; 26 turer i snitt. Motskadan gjorde alltså inte anfall svagare, tvärtom: figurerna dör fortare, armén töms, och hjälten kan bara anfallas när armén är tom. Academics (svaga figurer) straffas hårdast. **Balans görs inte på slumpbotar:** först AI-motståndaren, sedan balans med den.
 
-**AI byggd 2026-11-18.** SmartAI slår RandomAI i 56 av 60 matcher som Academics och 59 av 60 som Ghouls. 100 matcher SmartAI mot SmartAI (`simulate.py 100`): Ghouls 78 %, Academics 22 %; ritualseger 56 %, hjälte dödad 44 %; den som började vann 54 %; i snitt 21 turer. **Fynd om ekonomin (inte beslutat):** med +1 resurs per tur och ungefär 10–13 egna turer per match kostar ett ritualkort (4) en tredjedel av all resurs man får. Ritualkort spelas därför nästan aldrig, inte ens av SmartAI som sparar. `RESOURCE_PER_TURN` och ritualkortens kostnad bör provas.
+**AI byggd 2026-11-18.** SmartAI slår RandomAI i 56 av 60 matcher som Academics och 59 av 60 som Ghouls. 100 matcher SmartAI mot SmartAI (`simulate.py 100`): Ghouls 78 %, Academics 22 %; ritualseger 56 %, hjälte dödad 44 %; den som började vann 54 %; i snitt 21 turer. **Fynd om ekonomin (inte beslutat):** med +1 resurs per tur och ungefär 10–13 egna turer per match kostar ett ritualkort (4) en tredjedel av all resurs man får. Ritualkort spelades därför nästan aldrig, inte ens av SmartAI som sparade. **Löst samma dag:** resursen växer nu som mana i Hearthstone, och handen har max 10 kort. Siffrorna ovan gäller den gamla ekonomin.
 
 **Mekanik före grafik.** Grafiken (t.ex. `PygameUI`) väntar tills listan med gränssnittsmetoder är stabil: varje ny metod (motståndarens bräde, text efter anfall, Stress, "ritualen är nästan klar") måste annars skrivas i både `TerminalUI` och `PygameUI`.
 
 **AI-motståndare före grafik (beslutat 2026-11-18).** Användaren vill inte bygga om gränssnittet efteråt. Idag frågar `Game` samma `ui` om valen för båda spelarna, så en AI kräver att "vem som väljer" skiljs från "vad som visas".
 
-**Väntar till grafiken (beslutat 2026-11-18):** text efter anfall och liknande visning, mulligan (svårt att få känsla för i text). Ångra i målvalet: inte nu.
+**Väntar till grafiken (beslutat 2026-11-18):** mulligan (svårt att få känsla för i text). Tre visningsfel som syntes i speltest: (1) ⚔️ döljs när den är 0, så en figur vars attack sänkts till 0 (Wither) ser ut att sakna värdet; figurer ska alltid visa ⚔️, bara ritualkort ska dölja den. (2) Rapporten efter ett anfall säger inte när skadan blev 0 (den visar bara det som ändrades); den ska säga skada åt båda håll, t.ex. "deals 0 damage (⚔️ 0 vs 🛡️ 1), hits back for 1". (3) "--- Joe's turn ---" skrivs ut efter varje drag, så det ser ut som en ny tur. Ångra i målvalet: inte nu. *(Text efter anfall stod här först, men det gick inte att förstå spelet utan den, så den är byggd, se Terminalen.)*

@@ -14,10 +14,11 @@ __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
-from card import SpellCard, FactionName
+from card import SpellCard, RitualCard, FactionName
 
 
 RESET = "\033[0m"   # tillbaka till terminalens vanliga färg
+DIM = "\033[2m"     # grå, svag text: för kort som inte går att använda just nu
 
 LETTERS = "abcdefghijklmnopqrstuvwxyz"   # korten i armén väljs med bokstäver
 
@@ -66,24 +67,65 @@ class TerminalUI:
 
    # Visning
 
-   # Visar spelarens hand som en numrerad lista i färg, en rad per kort.
+   # Visar spelarens hand som en numrerad lista, en rad per kort.
    # Kostnaden står först inom parentes, till exempel "1. (2) Dark Occultist [...]".
-   def show_hand(self, player):
+   # Med moves (de lagliga dragen) visas kort som inte går att lägga nu i grått,
+   # med skälet efter, så att man direkt ser vad man kan göra.
+   def show_hand(self, player, moves=None):
       lines = []
       for card in player.get_hand():
-         lines.append(f"({card.get_cost()}) {self.colored(card)}")
+         if moves is None or self.moves_for(card, moves):
+            line = f"({card.get_cost()}) {self.colored(card)}"
+         else:
+            reason = self.why_not_playable(player, card)
+            line = f"{DIM}({card.get_cost()}) {card.short()}  – {reason}{RESET}"
+         lines.append(line + self.card_text(card))
       return self.numbered(lines)
 
-   # Visar spelarens armé med | mellan korten. Med bokstäver när spelaren ska kunna välja
-   # ett kort (den egna armén), utan när det bara är att titta (motståndarens).
-   def show_army(self, player, with_letters=True):
+   # Vad kortet gör (kortets special-text) på en egen rad under kortet, eller ingenting
+   def card_text(self, card):
+      special = card.get_special()
+      if special is None:
+         return ""
+      text = special.value
+      if not special.is_built():
+         text += " (NOT IN THE GAME YET: does nothing)"
+      return f"\n      {DIM}↳ {text}{RESET}"
+
+   # Visar spelarens armé, ett kort per rad. Med moves (den egna armén) får korten
+   # bokstäver, och kort som inte kan anfalla nu visas i grått med skälet efter.
+   # Utan moves (motståndarens armé) är det bara att titta.
+   def show_army(self, player, moves=None):
       lines = []
       for index, card in enumerate(player.get_army()):
-         if with_letters:
-            lines.append(f"{LETTERS[index]}. {self.colored(card)}")
+         if moves is None:
+            lines.append(f"   {self.colored(card)}")
+         elif self.moves_for(card, moves):
+            lines.append(f"{LETTERS[index]}. {self.colored(card)}  – can attack")
          else:
-            lines.append(self.colored(card))
-      return " | ".join(lines)
+            reason = self.why_cannot_attack(card)
+            lines.append(f"{LETTERS[index]}. {DIM}{card.short()}  – {reason}{RESET}")
+      return "\n".join(lines)
+
+   # Varför går kortet inte att lägga? Game har redan bestämt det (det finns inget drag);
+   # här letar terminalen bara upp en förklaring åt spelaren.
+   def why_not_playable(self, player, card):
+      missing = card.get_cost() - player.get_resource()
+      if missing > 0:
+         return f"need {missing} more {RESOURCE_NAME}"
+      if not isinstance(card, SpellCard) and not player.has_room_on_board():
+         return "the board is full"
+      return "no valid target"
+
+   # Varför kan kortet inte anfalla just nu?
+   def why_cannot_attack(self, card):
+      if isinstance(card, RitualCard):
+         return "ritual cards never attack"
+      if not card.is_ready():
+         return "new on the board, can attack next turn"
+      if card.has_attacked():
+         return "has already attacked this turn"
+      return "can't attack (spell effect)"
 
    # Visar spelarens döda hög i färg, med | mellan korten
    def show_graveyard(self, player):
@@ -140,31 +182,38 @@ class TerminalUI:
       print(f"Opponent {opponent.get_name()}:")
       print(self.show_hero(opponent))
       if opponent.get_army():
-         print(self.show_army(opponent, with_letters=False))
-      print("Your hero:")
+         print(self.show_army(opponent))
+      print("\nYour hero:")
       print(self.show_hero(player))
-      resource_line = f"{RESOURCE_NAME}: {player.get_resource()}"
+      if army:
+         print("Your army:")
+         print(self.show_army(player, moves))
+
+      resource_line = f"\n{RESOURCE_NAME}: {player.get_resource()} of {player.get_max_resource()}"
       if player.get_overload() > 0:
          resource_line += f"  (overload: {player.get_overload()} less next turn)"
       print(resource_line)
       print("Hand (cost):")
-      print(self.show_hand(player))
-      if army:
-         print("Army:")
-         print(self.show_army(player))
+      print(self.show_hand(player, moves))
 
       # Vilka kort går att lägga, och vilka kort får anfalla? Det står i dragen.
-      can_play = any(self.moves_for(card, moves) for card in hand)
-      can_attack = any(self.moves_for(card, moves) for card in army)
+      playable = []
+      for number, card in enumerate(hand, start=1):
+         if self.moves_for(card, moves):
+            playable.append(str(number))
+      attackers = []
+      for index, card in enumerate(army):
+         if self.moves_for(card, moves):
+            attackers.append(LETTERS[index])
 
-      # Frågan visar bara de val som går just nu
+      # Frågan räknar upp exakt de val som går just nu
       options = []
-      if can_play:
-         options.append(f"1-{len(hand)} play a card")
-      if can_attack:
-         options.append(f"a-{LETTERS[len(army) - 1]} attack")
-      options.append("0) end turn")
-      question = ", ".join(options) + ": "
+      if playable:
+         options.append(f"play {', '.join(playable)}")
+      if attackers:
+         options.append(f"attack with {', '.join(attackers)}")
+      options.append("0 end turn")
+      question = " | ".join(options) + ": "
 
       while True:
          answer = input(question).strip().lower()
@@ -184,7 +233,10 @@ class TerminalUI:
 
          card_moves = self.moves_for(card, moves)
          if not card_moves:
-            print(f"{card.get_name()} can't do anything right now.")
+            if card in hand:
+               print(f"You can't play {card.get_name()}: {self.why_not_playable(player, card)}.")
+            else:
+               print(f"{card.get_name()} can't attack: {self.why_cannot_attack(card)}.")
             continue
 
          return self.choose_move_for_card(card_moves)

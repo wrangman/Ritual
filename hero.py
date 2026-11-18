@@ -91,6 +91,13 @@ class Hero:
    def can_be_attacked(self):
       return True
 
+   # Korta ord för hjältens status, som statuses() på korten
+   def statuses(self):
+      words = []
+      if self.is_ritual_protected():
+         words.append("Ritual protected")
+      return words
+
    # Hjälten slår inte tillbaka när den blir anfallen (i Hearthstone bara med ett vapen,
    # och hjältarna här har inga vapen). Finns så att hjälten kan vara mål precis som ett kort.
    def counter_damage_against(self, attacker):

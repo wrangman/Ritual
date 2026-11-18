@@ -90,6 +90,11 @@ class Special(Enum):
    WARD_OF_THE_UNBEGOTTEN = "One of your cards gets Guard and extra armor until your next turn"
    CODEX_OF_THE_ELEVEN_KEYS = "One of your ritual cards gets extra magic and health"
 
+   # Är förmågan byggd i spelet? Alla spells är byggda, men av figurernas förmågor
+   # fungerar bara Guard än. Tas bort när DEVOUR, SACRIFICE, STUDY och SUMMON är byggda.
+   def is_built(self):
+      return self not in (Special.DEVOUR, Special.SACRIFICE, Special.STUDY, Special.SUMMON)
+
 
 # Grundklass för alla kort. Innehåller bara det som ALLA kort har.
 # Skapa inte Card direkt, använd CreatureCard eller SpellCard.
@@ -279,6 +284,13 @@ class CreatureCard(Card):
 
    def mark_attacked(self):
       self.attacked_this_turn = True
+
+   # Har kortet legat på brädet sedan förra turen?
+   def is_ready(self):
+      return self.ready
+
+   def has_attacked(self):
+      return self.attacked_this_turn
 
    # Hur mycket skada figuren gör på target: ⚔️ attack minus målets 🛡️ armor, minst 0.
    # Ett mål som är skyddat mot figurer tar ingen skada alls (Seal of the Black Sun).

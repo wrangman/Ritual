@@ -11,12 +11,10 @@ import copy
 from card import SpellCard
 from move import PlayCard, Attack, EndTurn
 from silent_ui import SilentUI
+from snapshot import Snapshot
 
 
 class Game:
-   # Så mycket resurs varje spelare får i början av sin tur. Det som inte används sparas.
-   RESOURCE_PER_TURN = 1
-
    # ui visar spelet, till exempel en TerminalUI (eller SilentUI när ingen tittar).
    # Valen gör varje spelares controller (människa eller AI), inte ui.
    # Game vet inte om det är terminal eller grafik, bara att ui har samma metoder.
@@ -59,12 +57,16 @@ class Game:
       if self.is_over():
          return
 
+      burned_before = len(current_player.get_burned())
       drawn = current_player.draw_cards(1) #always draw card at your turn
       if not drawn:
          stress = current_player.get_stress()
          self.ui.show_message(f"{current_player.get_name()} has no cards left. "
                               f"Stress {stress}: the hero takes {stress} damage.")
-      current_player.refill_resource(self.RESOURCE_PER_TURN)
+      elif len(current_player.get_burned()) > burned_before:
+         self.ui.show_message(f"{current_player.get_name()}'s hand is full: "
+                              f"{drawn[0].get_name()} is burned.")
+      current_player.refill_resource()   # 1 mer än förra turen, upp till 10
 
       # Korten på brädet ger sin ☩ till hjälten. Når man målet vinner man först i början
       # av sin nästa tur, om ritualen fortfarande når målet då.
@@ -84,8 +86,16 @@ class Game:
          if move.ends_turn():
             break
 
-         self.ui.show_message(move.describe(current_player))   # så att man ser vad AI:n gör
+         # Visa draget och sedan exakt vad det ändrade (skada, döda kort, ritual, resurs ...),
+         # så att man alltid ser vad som hände, både med sina egna och AI:ns drag.
+         self.ui.show_message(f"\n>> {move.describe(current_player)}")
+         before = Snapshot(self)
          move.execute(self)
+         changes = before.changes_until(Snapshot(self))
+         if not changes:
+            changes = ["Nothing happened."]
+         for line in changes:
+            self.ui.show_message(f"   {line}")
 
          if self.is_over():
             break

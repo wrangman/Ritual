@@ -19,7 +19,6 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 import random
 from controller import Controller
-from card import CreatureCard
 
 
 # Hittar "end turn" bland dragen (det finns alltid ett)
@@ -67,8 +66,7 @@ class SmartAI(Controller):
       "guard": 1.5,                 # ett kort med Guard skyddar resten
       "hidden": 1.5,                # ett kort som inte kan anfallas (Veil of Tiamat)
       "hand_card": 1.0,             # per kort i handen
-      "resource": 0.3,              # per resurs som inte sparas till något särskilt
-      "saving": 0.7,                # hur mycket av ett dyrt korts värde sparad resurs räknas som
+      "resource": 0.1,              # per resurs kvar (försvinner när turen är slut, så värd lite)
       "overload": 0.5,              # per resurs som är lånad från nästa tur
       "trigger": 2.0,               # per trigger som väntar (Infect, Mirror, Curse)
       "ritual_protection": 3.0,     # ritualen kan inte sänkas (Seal of Apep)
@@ -154,7 +152,7 @@ class SmartAI(Controller):
       value = w["hero_health"] * hero.get_health()
       value += w["ritual"] * min(hero.get_ritual(), goal)   # mer än målet är inte värt mer
       value += w["hand_card"] * len(player.get_hand())
-      value += self.resource_value(player)
+      value += w["resource"] * player.get_resource()
       value -= w["overload"] * player.get_overload()
 
       for card in player.get_army():
@@ -168,27 +166,6 @@ class SmartAI(Controller):
          value += w["ritual_protection"]
 
       return value
-
-   # Resurs är värd det den kan köpa. Finns det en figur eller ett ritualkort i handen som
-   # spelaren inte har råd med än, räknas den sparade resursen som en del av det kortets värde
-   # (3 av 4 sparade mot ett kort värt 14 är värt 0.7 * 14 * 3/4). Då lägger AI:n bara ett
-   # billigt kort om det är värt mer än det sparande den tappar. Utan något att spara till
-   # är resursen värd lite. (Spells räknas inte: deras värde syns först när de spelas.)
-   def resource_value(self, player):
-      w = self.weights
-      resource = player.get_resource()
-
-      goal_card = None
-      goal_value = 0
-      for card in player.get_hand():
-         if isinstance(card, CreatureCard) and card.get_cost() > resource:
-            if self.board_value(card) > goal_value:
-               goal_card = card
-               goal_value = self.board_value(card)
-
-      if goal_card is None:
-         return w["resource"] * resource
-      return w["saving"] * goal_value * resource / goal_card.get_cost()
 
    # Värdet av ett kort på brädet: dess stats och den ☩ det ger varje tur
    def board_value(self, card):

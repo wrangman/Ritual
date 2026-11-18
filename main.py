@@ -24,7 +24,7 @@ subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
 ui = TerminalUI()
 
 player1 = Player("Joe", academics, HumanController(ui))
-player2 = Player("Moe", ghouls, SmartAI())
+player2 = Player("Computer", ghouls, SmartAI())
 
 game = Game(player1, player2, ui)
 game.run()
