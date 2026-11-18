@@ -46,8 +46,8 @@ Varje fraktion har sin egen hjälte, sina egna kort och sina egna skills/förmå
 
 Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer stannar på brädet, spells används en gång):
 
-- `Card` är grundklassen med det som alla kort har: `faction`, `name`, `ritual`, `special`, `rarity`. Den skapas inte direkt; `short()` kastar `NotImplementedError`.
-- `CreatureCard(Card)` är en figur på brädet. Den lägger till `attack_name`, `attack`, `armor`, `magic` och `health`.
+- `Card` är grundklassen med det som alla kort har: `faction`, `name`, `ritual`, `special`, `rarity`, `cost`. Den skapas inte direkt; `short()` kastar `NotImplementedError`.
+- `CreatureCard(Card)` är en figur på brädet. Den lägger till `attack_name`, `attack`, `armor`, `magic`, `health`, `max_health` och `buffs` (en `BuffList`). Getters som `get_attack()` räknar in buffarna; fälten är grundvärdena. Använd alltid getters, inte fälten direkt, när värdet ska visas eller räknas med.
 - `RitualCard(CreatureCard)` är ett ritualkort som inte kan anfalla, se Ritual.
 - `SpellCard(Card)` är en spell som spelas från handen. Den lägger bara till `magic` (spellens styrka). `special` beskriver vad den gör.
 - Alla tre har getters och setters för sina fält. Det är medvetet: kort påverkar varandras stats under spelet, och en magiker ska i framtiden kunna trolla fram påhittade kort, till exempel ett spöke av ett annat kort.
@@ -58,10 +58,12 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - `short()` ger kompakt visning för brädet: `Namn [⚔️ 3 ❤️ 4 🛡️ 3 ☩ 3]`. ⚔️ och 🪄 visas bara om värdet är större än 0. Mellanslaget efter ikonen behövs: terminalen i VS Code ritar ⚔️, ❤️ och 🛡️ två rutor breda men räknar dem som en, så utan mellanslag hamnar siffran ovanpå ikonen.
 - Koden använder 3 mellanslags indrag.
 
-### Hjälte (`hero.py`) – byggs nu
+### Hjälte (`hero.py`)
 
 - `Hero` är en egen klass och inte ett `Card`: den ligger inte i leken, spelas inte och har ingen rarity. (Källa: Fireplace, en Hearthstone-motor i Python, har `Hero` och `Minion` som skilda klasser.)
-- Fält: `name`, `health` (30), `armor` och `magic` (0 från början), `ritual` (börjar på 0). Ritualmålet ligger kvar i `Faction`.
+- Fält: `name`, `health` (30), `max_health`, `armor` och `magic` (0 från början), `ritual` (börjar på 0), `buffs` (en `BuffList`, t.ex. Seal of Apep). Ritualmålet ligger kvar i `Faction`.
+- `add_ritual()` och `lose_ritual()` (aldrig under 0, och ingenting händer om ritualen är skyddad).
+- Hjälteförmågorna (Feast of Graves, The Eleventh Seal) är **inte byggda** än.
 - Hjälten har armor och magic så att den kan vara mål för `damage_against(target)` precis som ett kort.
 - Varje spelare har en egen hjälte (sammansättning: `Player` har en `Hero`), eftersom hjältens värden ändras under spelet.
 - Hjälteförmågor är enumen `HeroAbility` i `hero.py`, skild från kortens `Special`. Samma mönster: namnet säger vilken förmåga, värdet är texten.
@@ -87,8 +89,9 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 
 ### Anfall (bestämt)
 
-- Mål väljs i ordning: finns kort med Guard får bara de anfallas. Annars får alla kort i armén anfallas. Hjälten kan bara anfallas när armén är tom.
-- Anfall i `Game.attack(attacker, target)`: anfallaren räknar skadan (`damage_against`), målet tar den (`take_damage`), motståndaren städar sin armé (`clear_dead_cards`).
+- Mål väljs i ordning (`Player.get_targets()`): finns kort med Guard får bara de anfallas. Annars får alla kort i armén anfallas. Hjälten kan bara anfallas när armén är tom. Dolda kort (Veil of Tiamat) räknas inte alls.
+- Anfall i `Game.attack(attacker, target)`: triggers får först ta hand om anfallet (Mirror of Nitocris); annars räknar anfallaren skadan (`damage_against`), målet tar den (`take_damage`) och triggers reagerar (Curse of Choronzon). Sist städas döda kort bort på båda sidor.
+- Målet slår inte tillbaka (i Hearthstone gör båda korten skada på varandra). *Inte bestämt om det ska ändras.*
 
 ### Tur (bestämt)
 
@@ -108,8 +111,6 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
   - **The Silver Key** (kostnad 0): +2 resurs nu, Overload (2). Man lånar från framtiden.
   - **De Vermis Mysteriis** (kostnad 0): +2 resurs nu, den egna hjälten tar 3 skada. Man betalar med blod.
 - I koden: `Card.cost`; `Player.refill_resource()`, `gain_resource()`, `add_overload()`, `can_afford()`, `has_affordable_card()`; `Player.play_card()` drar kostnaden (och kastar `ValueError` om man inte har råd). Terminalen visar kostnaden i handen som `(2)` och vägrar kort man inte har råd med.
-
-
 - Som credits i Android: Netrunner: varje spelare får **+1 av resursen i början av sin tur**, börjar på 0 och har inget tak. Det som inte används **sparas** till nästa tur. Man kan alltså spara ihop till ett dyrt kort, till exempel ett ritualkort tidigt, men gör då mindre under tiden.
 - Alla får lika mycket, som mana i Hearthstone: resursen är inte kopplad till health eller ritual. (Ritualen som budget valdes bort: den som leder skulle få fler kort och dra ifrån, en positiv återkopplingsloop.)
 - Varje kort har en **kostnad** (`cost`, ett eget fält på `Card`). Man får lägga så många kort man har råd med.
@@ -119,8 +120,8 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 ### Spellkort (bestämt)
 
 - Spells spelas som i Hearthstone: välj kortet från handen, välj mål, och effekten sker direkt. Kortet hamnar aldrig på brädet.
-- **Guard skyddar inte mot spells.** En spell får träffa vilket fientligt kort som helst, eller hjälten (som Taunt i Hearthstone). Annars har Academics ingen chans. `Player.get_spell_targets()` ger hela armén plus hjälten.
-- Senare: varje spell (effekt) ska själv avgöra vilka mål den får välja, som i Hearthstone där kortets text styr (Fireplace: play requirements som `REQ_ENEMY_TARGET`). Just nu tillåts alla fientliga mål.
+- **Guard skyddar inte mot spells** (som Taunt i Hearthstone). Annars har Academics ingen chans. `Player.get_spell_targets()` ger hela armén plus hjälten.
+- Varje effekt avgör själv vilka mål den får välja (`get_targets`), som i Hearthstone där kortets text styr (Fireplace: play requirements som `REQ_ENEMY_TARGET`). Se "Mål" nedan.
 - **Effekter är egna objekt (sammansättning).** `SpellCard` *har* en effekt, till exempel `DamageOneEnemy`, som gör jobbet med `apply(...)`. Samma effekt kan återanvändas av flera spells. Källa: Fireplace (`play = Hit(TARGET, 6)`) och Forge (`DealDamage`); mönstret Command/Strategy (Gang of Four). Ingen lång `if/elif` över `Special`.
 - **Styrkan i en effekt är spellens 🪄 magic** (skada, läkning, buff, hur mycket ritual som sänks eller stjäls). Undantag: Scroll of Rituals använder sin ☩. Plague och Scales of Leviathan hade 🪄 0 och fick 🪄 2.
 - En effekt svarar på `needs_target()` och `get_targets(game)`: effekten själv säger vilka mål som är tillåtna. Har en spell inga giltiga mål kan den inte spelas (den betalas inte).
@@ -138,7 +139,7 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
   - **Curse of Choronzon:** nästa fiendekort som anfaller ett av dina ritualkort tar samma skada som det gjorde (engångs).
   - Triggers gäller bara melee-anfall (`Game.attack`), inte spells.
 - **Alla spells har en effekt.** Det tillfälliga blocket som bytte ut spells utan effekt är borttaget.
-- Man kan ångra medan man väljer (kort eller mål). När man har bekräftat är spellen kastad och kan inte tas tillbaka.
+- Man kan ångra medan man väljer (kort eller mål). När man har bekräftat är spellen kastad och kan inte tas tillbaka. *Ångra är inte byggt: i dag går det inte att backa ur målvalet.*
 - Exempel: tier 5 hos Ghouls (Resurrect, Plague, Infect, Ruin m.fl.).
 - **Tung dark magic kostar health.** Academics tyngsta spells skadar de egna korten i stället för att använda en egen stat för förstånd. Exempel: Necronomicon gör 3 skada på ett av de egna korten.
 - **Mål (bestämt, som i Hearthstone):** spelaren väljer högst **ett** mål per spell. Allt annat sker automatiskt eller slumpat.
@@ -172,9 +173,30 @@ Riktning som diskuterats:
 
 ### Öppna frågor
 
-- Är hjälten ett kort i leken eller separat, som en spelarfigur?
 - Ska alla lekar för en fraktion vara identiska, eller ska spelaren kunna välja kort?
 - Vem bygger leken när ett spel startar: spelaren, spelet eller en meny?
 - När en ghoul äter ett kort, får den kortets grundvärden eller värdena kortet hade när det dog?
-- Är tier 4 hos Ghouls (rena ritualkort med ❤️ 0) figurer eller spells?
-- `Player.play_card()` lägger alla kort i armén. Spells ska i stället verka och sedan hamna i gravhögen.
+- En action per tur, eller får alla kort i armén anfalla en gång var (som i Hearthstone)?
+- Ska målet slå tillbaka vid anfall (som i Hearthstone)?
+- Ska ett nytt kort få anfalla samma tur som det läggs ("summoning sickness" i Hearthstone)?
+- Ska armén ha ett max antal kort (Hearthstone: 7)?
+- Vad heter resursen? (Dread, Resolve, Devotion, Omen, Ichor …)
+- Idé: måste man hålla ritualmålet i 3 rundor för att vinna? Provas när spelet går att balansera (TODO i `Game.has_won`).
+- Ritualmålet 15 och `RESOURCE_PER_TURN = 1` ska provas i spel.
+
+## Läget (2026-11-18)
+
+**Fungerar:** en hel match i terminalen mellan Academics och Ghouls (`main.py`). Dra kort, resurs med sparande och overload, lägga kort, anfall med Guard, ritual som växer varje tur, vinst/förlust/oavgjort. Alla 36 spells har effekter (omedelbara, buffar och triggers). `TerminalUI` är utbytbart mot ett grafiskt gränssnitt.
+
+**Kontrollerat:** alla moduler importeras; 300 matcher med slumpbotar utan krascher, alla spells spelades; tio regelkontroller (buffar som går ut, Seal of Apep, Mirror, Curse, Infect, Veil, blodpris, läkningstak, overload) stämde. Med slumpbotar vann Academics 39 % och Ghouls 61 % (före spelleffekterna: Academics 20 % med en enklare bot). Testskripten låg i scratchpad och finns inte i projektet.
+
+**Inte byggt än:**
+- Figurernas förmågor (`Special` på figurer): DEVOUR, SACRIFICE, STUDY, SUMMON. Bara GUARD fungerar.
+- Hjälteförmågorna Feast of Graves och The Eleventh Seal.
+- Visa i terminalen att ett kort är smittat (Infect) eller att Mirror/Curse väntar.
+- Visa motståndarens bräde under ens egen tur, och en text efter anfall (hur mycket skada, vilket kort som dog).
+- Spelet kan hänga sig om båda spelarna har slut på kort och ingen kan anfalla.
+- Mulligan och slantsingling.
+- Shoggoths och The Deep Ones (bara Academics och Ghouls är byggda).
+
+**Förslag på nästa steg:** commit, sedan speltesta själv; därefter balans (en smartare bot för jämförelser) och de öppna frågorna ovan.
