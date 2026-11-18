@@ -71,7 +71,7 @@ tier_1 = [
                 magic=0,
                 health=3,
                 ritual=0,
-                special=Special.DEVOUR,
+                special=None,
                 cost=1,
                 rarity=Rarity.COMMON),
 
@@ -96,7 +96,7 @@ tier_2 = [
                 magic=0,
                 health=2,
                 ritual=0,
-                special=Special.DEVOUR,
+                special=None,
                 cost=2,
                 rarity=Rarity.RARE),
 
@@ -129,7 +129,7 @@ tier_2 = [
                 magic=0,
                 health=3,
                 ritual=1,
-                special=Special.DEVOUR,
+                special=None,
                 cost=2,
                 rarity=Rarity.RARE),
 
@@ -140,7 +140,7 @@ tier_2 = [
                 magic=1,
                 health=2,
                 ritual=1,
-                special=Special.DEVOUR,
+                special=None,
                 cost=2,
                 rarity=Rarity.RARE),
 ]

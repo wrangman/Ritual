@@ -14,7 +14,9 @@ __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
+import time
 from card import SpellCard, RitualCard, FactionName
+from move import Attack, Sacrifice
 
 
 RESET = "\033[0m"   # tillbaka till terminalens vanliga färg
@@ -23,6 +25,8 @@ DIM = "\033[2m"     # grå, svag text: för kort som inte går att använda just
 LETTERS = "abcdefghijklmnopqrstuvwxyz"   # korten i armén väljs med bokstäver
 
 RESOURCE_NAME = "Resource"   # vad resursen heter i spelet (namnet är inte bestämt än)
+
+MESSAGE_DELAY = 0.7   # sekunder efter varje meddelande, så att man hinner se datorns drag
 
 
 # Ger en ANSI-kod som färgar texten efter den, med exakt den här färgen (röd, grön, blå 0–255)
@@ -87,10 +91,7 @@ class TerminalUI:
       special = card.get_special()
       if special is None:
          return ""
-      text = special.value
-      if not special.is_built():
-         text += " (NOT IN THE GAME YET: does nothing)"
-      return f"\n      {DIM}↳ {text}{RESET}"
+      return f"\n      {DIM}↳ {special.value}{RESET}"
 
    # Visar spelarens armé, ett kort per rad. Med moves (den egna armén) får korten
    # bokstäver, och kort som inte kan anfalla nu visas i grått med skälet efter.
@@ -101,7 +102,10 @@ class TerminalUI:
          if moves is None:
             lines.append(f"   {self.colored(card)}")
          elif self.moves_for(card, moves):
-            lines.append(f"{LETTERS[index]}. {self.colored(card)}  – can attack")
+            can_do = "can attack"
+            if any(isinstance(move, Sacrifice) for move in self.moves_for(card, moves)):
+               can_do = "can attack or sacrifice itself"
+            lines.append(f"{LETTERS[index]}. {self.colored(card)}  – {can_do}")
          else:
             reason = self.why_cannot_attack(card)
             lines.append(f"{LETTERS[index]}. {DIM}{card.short()}  – {reason}{RESET}")
@@ -155,8 +159,10 @@ class TerminalUI:
       print(f"WINNER BY A MILE - MAYBE!\n\n {player.get_name()}")
 
    # Ett kort meddelande till spelaren
+   # En kort paus efter varje rad, annars rusar datorns drag förbi innan man hinner läsa dem
    def show_message(self, text):
       print(text)
+      time.sleep(MESSAGE_DELAY)
 
    # Båda vann samtidigt, till exempel om båda hjältarna dog av samma effekt
    def show_draw(self):
@@ -211,7 +217,10 @@ class TerminalUI:
       if playable:
          options.append(f"play {', '.join(playable)}")
       if attackers:
-         options.append(f"attack with {', '.join(attackers)}")
+         verb = "attack with"
+         if any(isinstance(move, Sacrifice) for move in moves):
+            verb = "attack/sacrifice with"
+         options.append(f"{verb} {', '.join(attackers)}")
       options.append("0 end turn")
       question = " | ".join(options) + ": "
 
@@ -254,14 +263,32 @@ class TerminalUI:
          if move.ends_turn():
             return move
 
-   # Kortet kan göra ett eller flera drag. Har dragen olika mål får spelaren välja mål.
+   # Kortet kan göra ett eller flera drag. Kan det både anfalla och offra sig (SACRIFICE)
+   # frågas först vilket, så att fiender och egna kort inte blandas i samma lista.
+   # Har dragen olika mål får spelaren sedan välja mål.
    def choose_move_for_card(self, card_moves):
+      attacks = [move for move in card_moves if isinstance(move, Attack)]
+      sacrifices = [move for move in card_moves if isinstance(move, Sacrifice)]
+      if attacks and sacrifices:
+         while True:
+            answer = input("1) attack or 2) sacrifice? ").strip()
+            if answer == "1":
+               card_moves = attacks
+               break
+            if answer == "2":
+               card_moves = sacrifices
+               break
+            print("Not a valid choice.")
+
       if len(card_moves) == 1:
          return card_moves[0]
       targets = []
       for move in card_moves:
          targets.append(move.get_target())
-      target = self.choose_target(targets)
+      if isinstance(card_moves[0], Sacrifice):
+         target = self.choose_target(targets, "Give its health and armor to which of your cards?")
+      else:
+         target = self.choose_target(targets)
       for move in card_moves:
          if move.get_target() is target:
             return move
@@ -269,11 +296,11 @@ class TerminalUI:
    # Shows the allowed targets and lets the player pick one. Returns the target.
    # The game decides which targets are allowed (Game.get_legal_moves), not the terminal.
    # Targets are shown without color: colored() needs get_faction(), and the hero has no faction.
-   def choose_target(self, targets):
+   def choose_target(self, targets, title="Targets:"):
       lines = []
       for target in targets:
          lines.append(target.short())
-      print("Targets:")
+      print(title)
       print(self.numbered(lines))
 
       while True:

@@ -36,11 +36,13 @@ class Rarity(Enum):
 class Special(Enum):
    # Alla fraktioner
    GUARD = "Enemies must attack this card first"
-   SUMMON = "Summons a card of your choice from your deck"
+   SUMMON = "When played: summons a random creature from your deck"
 
    # Ghouls, figurer
-   DEVOUR = "Devours dead cards to gain their stats"
-   SACRIFICE = "Sacrifices itself to boost another card"
+   DEVOUR = "When played: eats a dead creature in your graveyard and gains its attack and health"
+
+   # Academics, figurer
+   SACRIFICE = "Instead of attacking: dies and gives its health and armor to another of your cards"
 
    # Ghouls, spells
    RESURRECT = "Returns a random dead creature from your graveyard to the board"
@@ -61,27 +63,26 @@ class Special(Enum):
    KISS_OF_LILITH = "Gives one of your cards Guard until your next turn"
    CURSE_OF_CHORONZON = "The next enemy card that attacks one of your ritual cards takes the same damage"
 
-   # Academics, figurer
    STUDY = "Draws a card when played"
 
-   # Academics, spells (förbjudna böcker). Tung magi skadar de egna korten.
-   # "One of your cards takes X damage": ett slumpat eget kort med minst X health, annars hjälten.
+   # Academics, spells (förbjudna böcker). Tung magi kostar inte längre de egna korten något.
+   # Bara att stjäla ritual (Unaussprechlichen Kulten) och De Vermis Mysteriis skadar den egna hjälten.
    BOOK_OF_SORROWS = "Strikes one enemy with magic damage"
    SCROLL_OF_RITUALS ="Adds this spell's ritual to yours"
-   DE_VERMIS_MYSTERIIS = "Gain 2 resource now, but your hero takes 3 damage"
+   DE_VERMIS_MYSTERIIS = "Gain 2 resource now, but your hero takes 1 damage"
    THE_SILVER_KEY = "Gain 2 resource now. Overload (2): you get 2 less next turn"
    FORBIDDEN_CODEX ="Look at three cards from your deck and put one of them in your hand"
    WHISPERED_HEX = "An enemy card loses attack until your next turn"
-   NECRONOMICON = "Deals heavy magic damage to one enemy, but one of your cards takes 3 damage"
-   PNAKOTIC_MANUSCRIPTS = "Deals magic damage to all enemy cards, but your own cards take 1 damage"
+   NECRONOMICON = "Deals heavy magic damage to one enemy"
+   PNAKOTIC_MANUSCRIPTS = "Deals magic damage to all enemy cards"
    CULTES_DES_GOULES = "Removes armor from an enemy card"
-   UNAUSSPRECHLICHEN_KULTEN = "Steals ritual from the opponent, but one of your cards takes 2 damage"
+   UNAUSSPRECHLICHEN_KULTEN = "Steals ritual from the opponent, but your hero takes 1 damage"
    BOOK_OF_EIBON = "Burns away part of the opponent's ritual"
-   RLYEH_TEXT = "Draw two cards, but one of your cards takes 2 damage"
+   RLYEH_TEXT = "Draw two cards"
    SCROLL_OF_DZYAN ="All your cards get extra magic until your next turn"
-   RITE_OF_THE_THIRTEENTH_HOUR = "All your cards get extra attack this turn, but each of them takes 1 damage"
+   RITE_OF_THE_THIRTEENTH_HOUR = "All your cards get extra attack this turn"
    PSALMS_OF_THE_VOID = "Heals all your cards"
-   THE_KING_IN_YELLOW = "No enemy card can attack next turn, but one of your cards takes 2 damage"
+   THE_KING_IN_YELLOW = "No enemy card can attack next turn"
    BOOK_OF_THE_NAMELESS_DEAD = "Returns a random card from your graveyard to your hand"
 
    # Academics, spells som skyddar ritual
@@ -89,11 +90,6 @@ class Special(Enum):
    MIRROR_OF_NITOCRIS = "The next melee attack on one of your cards hits the attacker instead"
    WARD_OF_THE_UNBEGOTTEN = "One of your cards gets Guard and extra armor until your next turn"
    CODEX_OF_THE_ELEVEN_KEYS = "One of your ritual cards gets extra magic and health"
-
-   # Är förmågan byggd i spelet? Alla spells är byggda, men av figurernas förmågor
-   # fungerar bara Guard än. Tas bort när DEVOUR, SACRIFICE, STUDY och SUMMON är byggda.
-   def is_built(self):
-      return self not in (Special.DEVOUR, Special.SACRIFICE, Special.STUDY, Special.SUMMON)
 
 
 # Grundklass för alla kort. Innehåller bara det som ALLA kort har.
@@ -254,6 +250,10 @@ class CreatureCard(Card):
    # Sänker attack, men aldrig under 0
    def lower_attack(self, amount):
       self.attack = max(0, self.attack - amount)
+
+   # För alltid, till exempel när en ghoul äter ett dött kort (DEVOUR)
+   def increase_attack(self, amount):
+      self.attack += amount
 
    def short(self):
       stats = []

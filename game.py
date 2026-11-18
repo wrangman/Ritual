@@ -8,10 +8,11 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 
 import copy
-from card import SpellCard
-from move import PlayCard, Attack, EndTurn
+from card import SpellCard, Special
+from move import PlayCard, Attack, Sacrifice, EndTurn
 from silent_ui import SilentUI
 from snapshot import Snapshot
+from effect import creature_ability
 
 
 class Game:
@@ -162,7 +163,18 @@ class Game:
             else:
                moves.append(PlayCard(card))
          elif player.has_room_on_board():
-            moves.append(PlayCard(card))
+            # En figur med en förmåga som behöver ett mål (DEVOUR) blir ett drag per mål.
+            # Finns inget mål (tom gravhög) läggs figuren ändå, men förmågan gör inget
+            # (som Battlecry i Hearthstone).
+            ability = creature_ability(card)
+            targets = []
+            if ability and ability.needs_target():
+               targets = ability.get_targets(self)
+            if targets:
+               for target in targets:
+                  moves.append(PlayCard(card, target))
+            else:
+               moves.append(PlayCard(card))
 
       targets = self.get_opponent_of(player).get_targets()
       for card in player.get_army():
@@ -170,15 +182,39 @@ class Game:
             for target in targets:
                moves.append(Attack(card, target))
 
+      # SACRIFICE: i stället för att anfalla kan kortet offra sig för ett annat eget kort.
+      # Samma regler som för anfall: kortet måste ha legat sedan förra turen.
+      for card in player.get_army():
+         if card.get_special() == Special.SACRIFICE and card.can_attack():
+            for other in player.get_army():
+               if other is not card:
+                  moves.append(Sacrifice(card, other))
+
       moves.append(EndTurn())
       return moves
 
    # Den aktiva spelaren lägger ett kort. Kortet betalas och läggs ut
    # (spells går till döda högen), sedan sker spellens effekt.
+   # En figur med en förmåga som händer när den läggs (DEVOUR, STUDY, SUMMON) gör den nu.
    def play_card(self, card, target=None):
       self.current_player.play_card(card)
-      if isinstance(card, SpellCard) and card.get_effect():
-         card.get_effect().apply(self, card, target)
+      if isinstance(card, SpellCard):
+         if card.get_effect():
+            card.get_effect().apply(self, card, target)
+      else:
+         ability = creature_ability(card)
+         if ability and (target is not None or not ability.needs_target()):
+            ability.apply(self, card, target)
+
+
+   # SACRIFICE: kortet dör och ger sin ❤️ health och 🛡️ armor till target för alltid.
+   # Kortet dör som vanligt (kill_card), så dess ☩ försvinner från ritualen.
+   def sacrifice(self, card, target):
+      target.increase_health(card.get_health())
+      target.repair_armor(card.get_armor())
+      card.mark_attacked()
+      card.set_health(0)
+      self.clear_dead_cards()
 
 
    # En kopia av hela spelet som AI:n kan prova ett drag på, utan att det riktiga spelet ändras.

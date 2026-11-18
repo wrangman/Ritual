@@ -118,6 +118,17 @@ class Player:
       self.army.append(card)
       card.enter_board()   # som i Hearthstone: ett återupplivat kort måste också vänta en tur
 
+   # Ett dött kort äts upp (DEVOUR): det försvinner ur gravhögen för gott,
+   # så det kan inte heller återupplivas
+   def eat_from_graveyard(self, card):
+      self.graveyard.remove(card)
+
+   # Ett kort ur leken läggs direkt på brädet (SUMMON). Det måste vänta en tur, som alla nya kort.
+   def summon_from_deck(self, card):
+      self.deck.remove(card)
+      self.army.append(card)
+      card.enter_board()
+
    # I början av turen blir alla kort i armén redo att anfalla (en gång var)
    def ready_army(self):
       for card in self.army:

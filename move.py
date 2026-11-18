@@ -60,6 +60,16 @@ class Attack(Move):
       return f"{player.get_name()}: {self.card.get_name()} attacks {self.target.get_name()}"
 
 
+# SACRIFICE: en figur offrar sig i stället för att anfalla. Den dör och ger
+# sin ❤️ health och 🛡️ armor till ett annat eget kort (target).
+class Sacrifice(Move):
+   def execute(self, game):
+      game.sacrifice(self.card, self.target)
+
+   def describe(self, player):
+      return f"{player.get_name()}: {self.card.get_name()} sacrifices itself for {self.target.get_name()}"
+
+
 # Spelaren är klar med sin tur (till exempel för att spara resurs till ett dyrt kort).
 class EndTurn(Move):
    def ends_turn(self):

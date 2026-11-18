@@ -14,7 +14,7 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 import random
-from card import CreatureCard
+from card import CreatureCard, Special
 from buff import Buff
 from trigger import InfectTrigger, MirrorTrigger, CurseTrigger
 
@@ -274,7 +274,20 @@ class PayWithBlood(Effect):
          caster.get_hero().take_damage(self.amount)
 
 
-# Alla egna kort tar lika mycket skada (Rite of the Thirteenth Hour).
+# Den egna hjälten tar skada: priset för att stjäla ritual (Unaussprechlichen Kulten).
+# Priset tas av spelaren själv, aldrig av korten, så att inget kort dör av det.
+class DamageOwnHero(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
+   def needs_target(self):
+      return False
+
+   def apply(self, game, spell, target):
+      game.get_current_player().get_hero().take_damage(self.amount)
+
+
+# Alla egna kort tar lika mycket skada.
 class DamageAllOwnCards(Effect):
    def __init__(self, amount):
       self.amount = amount
@@ -424,3 +437,54 @@ class GainResource(Effect):
       caster.gain_resource(self.amount)
       caster.add_overload(self.overload)
       caster.get_hero().take_damage(self.hero_damage)
+
+
+# Figurernas förmågor
+
+# DEVOUR: figuren som läggs äter ett dött kort i den egna gravhögen och får dess
+# ⚔️ attack och ❤️ health för alltid. Det ätna kortet försvinner (kan inte återupplivas).
+# Värdena är kortets egna utan buffar (buffarna försvann när det dog), men med
+# bestående ändringar som Wither.
+class Devour(Effect):
+   def get_targets(self, game):
+      dead_creatures = []
+      for card in game.get_current_player().get_graveyard():
+         if isinstance(card, CreatureCard):
+            dead_creatures.append(card)
+      return dead_creatures
+
+   def apply(self, game, card, target):
+      card.increase_attack(target.get_attack())
+      card.increase_health(target.get_max_health())
+      game.get_current_player().eat_from_graveyard(target)
+
+
+# SUMMON: en slumpad figur ur den egna leken läggs direkt på brädet
+# (som Recruit i Hearthstone). Är brädet fullt eller finns ingen figur i leken händer inget.
+class SummonRandomFromDeck(Effect):
+   def needs_target(self):
+      return False
+
+   def apply(self, game, card, target):
+      caster = game.get_current_player()
+      if not caster.has_room_on_board():
+         return
+      creatures = []
+      for deck_card in caster.get_deck().get_cards():
+         if isinstance(deck_card, CreatureCard):
+            creatures.append(deck_card)
+      if creatures:
+         caster.summon_from_deck(random.choice(creatures))
+
+
+# Vilken effekt en figurs förmåga har när figuren läggs (som Battlecry i Hearthstone).
+# Förmågor som inte står här gör inget när kortet läggs (till exempel GUARD, som
+# i stället gäller hela tiden kortet ligger på brädet).
+CREATURE_ABILITIES = {
+   Special.DEVOUR: Devour(),
+   Special.STUDY: DrawCards(1),
+   Special.SUMMON: SummonRandomFromDeck(),
+}
+
+def creature_ability(card):
+   return CREATURE_ABILITIES.get(card.get_special())

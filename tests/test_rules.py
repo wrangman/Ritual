@@ -8,6 +8,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 import unittest
 from buff import Buff
+from move import Sacrifice
 from tests.helpers import (new_game, take_from_deck, take_ritual_card, take_creatures,
                            put_ready_on_board)
 
@@ -174,6 +175,81 @@ class TestRetaliation(unittest.TestCase):
       crusher = self.ghoul("Bone Crusher")
       self.game.attack(crusher, take_ritual_card(self.academics))
       self.assertEqual(crusher.get_health(), 4)
+
+
+class TestCreatureAbilities(unittest.TestCase):
+   def setUp(self):
+      self.game, self.academics, self.ghouls = new_game()
+      self.game.current_player = self.ghouls
+      self.ghouls.resource = 10
+
+   def test_devour_eats_a_dead_card_and_gains_its_stats(self):
+      dead = take_from_deck(self.ghouls, "Ossuary Keeper")   # ⚔️ 4 ❤️ 3
+      self.ghouls.graveyard.append(dead)
+      eater = take_from_deck(self.ghouls, "Catacomb Tyrant")  # ⚔️ 5 ❤️ 6, DEVOUR
+      self.ghouls.hand.append(eater)
+      moves = [m for m in self.game.get_legal_moves(self.ghouls) if m.get_card() is eater]
+      self.assertEqual([m.get_target() for m in moves], [dead])
+      moves[0].execute(self.game)
+      self.assertEqual(eater.get_attack(), 5 + 4)
+      self.assertEqual(eater.get_health(), 6 + 3)
+      self.assertNotIn(dead, self.ghouls.get_graveyard())   # uppäten, kan inte återupplivas
+
+   def test_devour_with_empty_graveyard_still_plays_the_card(self):
+      eater = take_from_deck(self.ghouls, "Catacomb Tyrant")
+      self.ghouls.hand.append(eater)
+      moves = [m for m in self.game.get_legal_moves(self.ghouls) if m.get_card() is eater]
+      self.assertEqual(len(moves), 1)
+      moves[0].execute(self.game)
+      self.assertIn(eater, self.ghouls.get_army())
+      self.assertEqual(eater.get_attack(), 5)
+
+   def test_study_draws_a_card(self):
+      self.game.current_player = self.academics
+      self.academics.resource = 10
+      student = take_from_deck(self.academics, "Night Archivist")   # STUDY
+      self.academics.hand.append(student)
+      hand_before = len(self.academics.get_hand())
+      self.game.play_card(student)
+      self.assertEqual(len(self.academics.get_hand()), hand_before - 1 + 1)
+
+   def test_summon_puts_a_random_creature_from_the_deck_on_the_board(self):
+      self.game.current_player = self.academics
+      self.academics.resource = 10
+      wilbur = take_from_deck(self.academics, "Wilbur Whateley")   # SUMMON
+      self.academics.hand.append(wilbur)
+      deck_before = len(self.academics.get_deck())
+      self.game.play_card(wilbur)
+      self.assertEqual(len(self.academics.get_army()), 2)
+      self.assertEqual(len(self.academics.get_deck()), deck_before - 1)
+      self.assertFalse(self.academics.get_army()[1].can_attack())   # nytt kort väntar en tur
+
+
+class TestSacrifice(unittest.TestCase):
+   def setUp(self):
+      self.game, self.academics, self.ghouls = new_game()
+      self.student = take_from_deck(self.academics, "Miskatonic Student")   # ❤️ 2 🛡️ 1 ☩ 1
+      self.ritual_card = take_ritual_card(self.academics)
+      put_ready_on_board(self.academics, self.student)
+      put_ready_on_board(self.academics, self.ritual_card)
+
+   def sacrifice_moves(self):
+      return [m for m in self.game.get_legal_moves(self.academics) if isinstance(m, Sacrifice)]
+
+   def test_sacrifice_gives_health_and_armor_and_costs_ritual(self):
+      self.academics.get_hero().add_ritual(5)
+      health, armor = self.ritual_card.get_health(), self.ritual_card.get_armor()
+      move = self.sacrifice_moves()[0]
+      self.assertIs(move.get_target(), self.ritual_card)
+      move.execute(self.game)
+      self.assertNotIn(self.student, self.academics.get_army())
+      self.assertEqual(self.ritual_card.get_health(), health + 2)
+      self.assertEqual(self.ritual_card.get_armor(), armor + 1)
+      self.assertEqual(self.academics.get_hero().get_ritual(), 5 - 1)   # studentens ☩ 1
+
+   def test_new_card_cannot_sacrifice(self):
+      self.student.enter_board()   # som om den lades den här turen
+      self.assertEqual(self.sacrifice_moves(), [])
 
 
 if __name__ == "__main__":

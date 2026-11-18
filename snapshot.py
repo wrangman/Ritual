@@ -33,10 +33,12 @@ class Snapshot:
             "hero": card_state(hero),
             "ritual": hero.get_ritual(),
             "resource": player.get_resource(),
-            "deck": len(player.get_deck()),
             "burned": len(player.get_burned()),
             # id(card) skiljer två exemplar av samma kort åt
             "army": {id(card): card_state(card) for card in player.get_army()},
+            "deck": {id(card) for card in player.get_deck().get_cards()},
+            "hand": {id(card) for card in player.get_hand()},
+            "graveyard": {id(card): card.get_name() for card in player.get_graveyard()},
          }
 
    # Raderna som beskriver vad som har ändrats sedan den här bilden togs
@@ -58,17 +60,35 @@ class Snapshot:
                lines += self.stat_changes(card, after["army"][card_id])
          for card_id, card in after["army"].items():
             if card_id not in before["army"]:
-               lines.append(f"{card['name']} enters the board")
+               if card_id in before["deck"]:
+                  where = " from the deck"            # SUMMON
+               elif card_id in before["graveyard"]:
+                  where = " from the graveyard"       # Resurrect
+               else:
+                  where = ""
+               lines.append(f"{card['name']} enters the board{where} {self.stats_text(card)}")
 
-         # Kort som dras syns som att leken krymper. Kort som inte fick plats i handen
-         # (full hand, 10 kort) försvinner och räknas för sig.
+         # Kort som lämnade gravhögen utan att komma ut på brädet
+         for card_id, card_name in before["graveyard"].items():
+            if card_id not in after["graveyard"] and card_id not in after["army"]:
+               if card_id in after["hand"]:
+                  lines.append(f"{card_name} returns to {name}'s hand")
+               else:
+                  lines.append(f"{card_name} is eaten")   # DEVOUR
+
+         # Kort som gick från leken till handen är dragna. Kort som inte fick plats
+         # i handen (full hand, 10 kort) försvinner och räknas för sig.
          burned = after["burned"] - before["burned"]
-         drawn = before["deck"] - after["deck"] - burned
+         drawn = len(before["deck"] & after["hand"])
          if drawn > 0:
             lines.append(f"{name} draws {drawn} card{'s' if drawn > 1 else ''}")
          if burned > 0:
             lines.append(f"{name}'s hand is full: {burned} card{'s' if burned > 1 else ''} burned")
       return lines
+
+   # Kortets stats inom hakparentes, till exempel [⚔️ 5 ❤️ 4]
+   def stats_text(self, card):
+      return f"[⚔️ {card['attack']} ❤️ {card['health']} 🛡️ {card['armor']}]"
 
    # Ändrade stats och statusar för ett kort eller en hjälte
    def stat_changes(self, before, after):

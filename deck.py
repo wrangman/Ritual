@@ -40,6 +40,14 @@ class Deck():
    def add_card(self, card):
       self.cards.append(card)
 
+   # Alla kort i leken, som en kopia (så att leken bara ändras via Deck)
+   def get_cards(self):
+      return list(self.cards)
+
+   # Tar ut ett visst kort ur leken (SUMMON lägger ett kort ur leken på brädet)
+   def remove(self, card):
+      self.cards.remove(card)
+
    # Lägger kortet längst ner i leken (toppen är slutet på listan)
    def put_on_bottom(self, card):
       self.cards.insert(0, card)

@@ -12,8 +12,8 @@ __email__ = "johan.wrango@ga.dbgy.se"
 import copy
 from effect import (DamageOneEnemy, GainResource, DamageAllEnemyCards, HealAllOwnCards,
                     RemoveArmor, BuffOwnCard, LowerRitual, StealRitual, GainRitual,
-                    DrawCards, ReturnRandomToHand, LookAtTopCards, PayWithBlood, Combined,
-                    GiveBuff, DamageAllOwnCards, ReflectNextAttack)
+                    DrawCards, ReturnRandomToHand, LookAtTopCards, DamageOwnHero, Combined,
+                    GiveBuff, ReflectNextAttack)
 from faction import Faction
 from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionName
 from hero import Hero, HeroAbility
@@ -31,7 +31,7 @@ tier_2 = [
                 magic=2,
                 health=2,
                 ritual=1,
-                special=None,
+                special=Special.SACRIFICE,
                 cost=2,
                 rarity=Rarity.RARE),
 
@@ -53,7 +53,7 @@ tier_2 = [
                 magic=3,
                 health=2,
                 ritual=1,
-                special=None,
+                special=Special.SACRIFICE,
                 cost=2,
                 rarity=Rarity.RARE),
 
@@ -133,7 +133,7 @@ ritual_cards = [
    RitualCard(FactionName.ACADEMICS, "Lectern of the Madman",
               armor=0,
               magic=5,
-              health=2,
+              health=7,
               ritual=5,
               special=None,
               cost=4,
@@ -142,7 +142,7 @@ ritual_cards = [
    RitualCard(FactionName.ACADEMICS, "Sentinel Hill Stone Circle",
               armor=0,
               magic=4,
-              health=3,
+              health=8,
               ritual=5,
               special=None,
               cost=4,
@@ -151,7 +151,7 @@ ritual_cards = [
    RitualCard(FactionName.ACADEMICS, "The Angled Attic",
               armor=0,
               magic=4,
-              health=2,
+              health=7,
               ritual=4,
               special=None,
               cost=4,
@@ -160,7 +160,7 @@ ritual_cards = [
    RitualCard(FactionName.ACADEMICS, "Circle of Eleven Candles",
               armor=0,
               magic=5,
-              health=2,
+              health=7,
               ritual=4,
               special=None,
               cost=4,
@@ -169,7 +169,7 @@ ritual_cards = [
    RitualCard(FactionName.ACADEMICS, "Midnight Seminar",
               armor=0,
               magic=3,
-              health=3,
+              health=8,
               ritual=4,
               special=None,
               cost=4,
@@ -201,7 +201,7 @@ basic_spells = [
              special=Special.DE_VERMIS_MYSTERIIS,
              cost=0,
              rarity=Rarity.UNCOMMON,
-             effect=GainResource(2, hero_damage=3)),
+             effect=GainResource(2, hero_damage=1)),
 
    # Ger mer att spendera nu, lånat från framtiden: nästa tur får man mindre (overload).
    SpellCard(FactionName.ACADEMICS, "The Silver Key",
@@ -237,7 +237,7 @@ spell_cards = [
              special=Special.NECRONOMICON,
              cost=3,
              rarity=Rarity.EPIC,
-             effect=Combined(DamageOneEnemy(), PayWithBlood(3))),
+             effect=DamageOneEnemy()),
 
    SpellCard(FactionName.ACADEMICS, "Pnakotic Manuscripts",
              magic=3,
@@ -245,7 +245,7 @@ spell_cards = [
              special=Special.PNAKOTIC_MANUSCRIPTS,
              cost=3,
              rarity=Rarity.RARE,
-             effect=DamageAllEnemyCards(own_damage=1)),
+             effect=DamageAllEnemyCards()),
 
    SpellCard(FactionName.ACADEMICS, "Cultes des Goules",
              magic=3,
@@ -261,7 +261,7 @@ spell_cards = [
              special=Special.UNAUSSPRECHLICHEN_KULTEN,
              cost=2,
              rarity=Rarity.RARE,
-             effect=Combined(StealRitual(), PayWithBlood(2))),
+             effect=Combined(StealRitual(), DamageOwnHero(1))),
 
    SpellCard(FactionName.ACADEMICS, "Book of Eibon",
              magic=3,
@@ -277,7 +277,7 @@ spell_cards = [
              special=Special.RLYEH_TEXT,
              cost=2,
              rarity=Rarity.RARE,
-             effect=Combined(DrawCards(2), PayWithBlood(2))),
+             effect=DrawCards(2)),
 
    SpellCard(FactionName.ACADEMICS, "Scroll of Dzyan",
              magic=2,
@@ -293,7 +293,7 @@ spell_cards = [
              special=Special.RITE_OF_THE_THIRTEENTH_HOUR,
              cost=2,
              rarity=Rarity.RARE,
-             effect=Combined(GiveBuff(GiveBuff.ALL_OWN_CARDS, attack=1, this_turn_only=True), DamageAllOwnCards(1))),
+             effect=GiveBuff(GiveBuff.ALL_OWN_CARDS, attack=1, this_turn_only=True)),
 
    SpellCard(FactionName.ACADEMICS, "Psalms of the Void",
              magic=2,
@@ -309,7 +309,7 @@ spell_cards = [
              special=Special.THE_KING_IN_YELLOW,
              cost=2,
              rarity=Rarity.EPIC,
-             effect=Combined(GiveBuff(GiveBuff.ALL_ENEMY_CARDS, cannot_attack=True), PayWithBlood(2))),
+             effect=GiveBuff(GiveBuff.ALL_ENEMY_CARDS, cannot_attack=True)),
 
    SpellCard(FactionName.ACADEMICS, "Book of the Nameless Dead",
              magic=0,

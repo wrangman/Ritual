@@ -77,7 +77,8 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - `TerminalUI.choose_move` kollar inga regler själv: den visar motståndarens hjälte och armé, den egna sidan, och väljer bland de lagliga dragen från `Game` (siffra = kort i handen, bokstav = anfall, 0 = avsluta turen; har kortet flera mål frågas målet efteråt).
 - **Vad som hände (byggt 2026-11-18):** efter varje drag (både spelarens och AI:ns) visar `Game` draget (`>> Joe plays Book of Sorrows on Morrigan Upton`) och sedan exakt vad som ändrades: ❤️/⚔️/🛡️/🪄 före → efter, döda kort, nya kort på brädet, ☩, resurs, dragna kort och statusar (Guard, Veiled ...). `Snapshot` (`snapshot.py`) tar en bild av spelet före och efter draget och jämför. Då behöver ingen effekt beskriva sitt eget resultat. Hjälten har `statuses()` som korten.
 - **Handen** visar vad varje kort gör (kortets `special`-text) på raden under. Kort som inte går att spela är grå med skälet efter (för lite resurs, fullt bräde, inget mål). Den egna armén visar för varje kort om det kan anfalla, och annars varför. Frågan räknar upp exakt vilka val som går. Har ett drag bara ett möjligt mål väljs det automatiskt (användaren vill ha det så).
-- Figurförmågor som inte är byggda (`Special.is_built()` ger `False`: DEVOUR, SACRIFICE, STUDY, SUMMON) visas med "(NOT IN THE GAME YET: does nothing)", så att kortet inte lovar något som inte händer.
+- Alla figurförmågor är byggda. (Medan några inte var det visades de med "(NOT IN THE GAME YET: does nothing)"; `Special.is_built()` togs bort när SACRIFICE byggdes. Lägg tillbaka en sådan märkning om en förmåga läggs på kort innan den är byggd, så att kortet inte lovar något som inte händer.)
+- Ett kort i armén som både kan anfalla och offra sig (SACRIFICE) får frågan "1) attack or 2) sacrifice?" innan målet väljs, så att fiender och egna kort inte blandas i samma lista.
 - `SilentUI` (`silent_ui.py`) visar ingenting. Används i tester, simuleringar och när AI:n provar drag på en kopia.
 - Färg per fraktion: figurer får en färg och spells en ljusare ton av samma färg. Ghouls är mörkröda, The Academics blå, Shoggoths gyllengula och The Deep Ones gröna.
 - Färgerna är 24-bitars ANSI-koder (`rgb()`). Nycklarna i `FACTION_COLORS` är `FactionName`-värden.
@@ -173,7 +174,11 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - **Alla spells har en effekt.** Det tillfälliga blocket som bytte ut spells utan effekt är borttaget.
 - Man kan ångra medan man väljer (kort eller mål). När man har bekräftat är spellen kastad och kan inte tas tillbaka. *Ångra är inte byggt: i dag går det inte att backa ur målvalet.*
 - Exempel: tier 5 hos Ghouls (Resurrect, Plague, Infect, Ruin m.fl.).
-- **Tung dark magic kostar health.** Academics tyngsta spells skadar de egna korten i stället för att använda en egen stat för förstånd. Exempel: Necronomicon gör 3 skada på ett av de egna korten.
+- **Tung dark magic kostar inte längre något (ändrat 2026-11-18, användarens beslut).** Förut skadade Academics tyngsta spells de egna korten. Tillsammans med regeln att ritualen sjunker när ett kort dör straffades Academics då dubbelt för sin egen magi (kortet dog *och* ☩ försvann), och de vann bara drygt 20 % av AI-matcherna. Nu:
+  - **Unaussprechlichen Kulten** (stjäl ritual): **hjälten** tar 1 skada (`DamageOwnHero(1)`), aldrig ett kort. Att stjäla ritual ska kosta spelaren själv.
+  - **Necronomicon, R'lyeh Text, The King in Yellow, Pnakotic Manuscripts, Rite of the Thirteenth Hour:** inget pris alls.
+  - **De Vermis Mysteriis** (+2 resurs, hjälten tar 1, sänkt från 3) **behåller sitt pris** (användarens beslut): utan det vore den gratis +2 resurs, bättre än The Silver Key.
+  - `PayWithBlood` och `DamageAllOwnCards` finns kvar i `effect.py` men används inte av något kort just nu.
 - **Mål (bestämt, som i Hearthstone):** spelaren väljer högst **ett** mål per spell. Allt annat sker automatiskt eller slumpat.
   - "One enemy" (fiendens figur eller hjälte): Book of Sorrows, Necrotic Bolt, Necronomicon. Texterna ska säga "one enemy".
   - Bara fiendens figurer: Infect, Drain Life, Wither, Terror, Whispered Hex, Cultes des Goules. Area-spells (Plague, Pnakotic Manuscripts) träffar bara figurer, inte hjälten.
@@ -182,7 +187,7 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
   - Drain Life läker automatiskt den egna hjälten (som Drain Life i Hearthstone).
   - Resurrect och Book of the Nameless Dead hämtar ett **slumpat** kort ur gravhögen (som Resurrect i Hearthstone).
   - Forbidden Codex: titta på tre kort i leken och ta ett (som Tracking i Hearthstone).
-- **Priset för tung magi** (Necronomicon, Unaussprechlichen Kulten, R'lyeh Text): skadan tas automatiskt av ett slumpat eget kort som har **minst lika mycket health som priset** (kortet får dö, men ett kort med 2 health väljs aldrig för ett pris på 3). Finns inget sådant kort tar den egna hjälten skadan, och dör hjälten förlorar man (oavgjort om motståndarens hjälte dör samtidigt). (Ersätter den gamla regeln att tung magi inte fungerar utan eget kort.)
+- *(Gammal regel, används inte av något kort sedan 2026-11-18:)* **Priset för tung magi** (`PayWithBlood`): skadan tas automatiskt av ett slumpat eget kort som har **minst lika mycket health som priset** (kortet får dö, men ett kort med 2 health väljs aldrig för ett pris på 3). Finns inget sådant kort tar den egna hjälten skadan, och dör hjälten förlorar man (oavgjort om motståndarens hjälte dör samtidigt). (Ersätter den gamla regeln att tung magi inte fungerar utan eget kort.)
 
 ### Ritual (bestämt)
 
@@ -197,15 +202,16 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - Ritualkort skyddas med `GUARD` på starka melee-kort (fienden måste anfalla dem först, som Taunt i Hearthstone; namnet Guard kommer från The Elder Scrolls: Legends) och med skydds-spells (Ghouls: Veil of Tiamat, Scales of Leviathan, Seal of Apep, Kiss of Lilith, Curse of Choronzon).
 - Skydds-spellernas namn har anti-kosmisk inspiration: gamla kaosväsen och antigudar (Tiamat, Leviathan, Apep, Lilith, Choronzon).
 
-### Figurernas förmågor (delvis beslutat 2026-11-18, inte byggt)
+### Figurernas förmågor (byggt 2026-11-18, utom ABSORB)
 
-Bara GUARD fungerar idag. Det här är bestämt eller noterat:
+GUARD gäller hela tiden kortet ligger på brädet. DEVOUR, STUDY och SUMMON händer **när kortet läggs** (som Battlecry i Hearthstone). De är vanliga `Effect`-objekt i `effect.py`, precis som spellernas, och `CREATURE_ABILITIES` / `creature_ability(card)` säger vilken effekt en förmåga har. `Game.get_legal_moves()` ger ett drag per mål när förmågan behöver ett mål, och `Game.play_card()` kör förmågan när figuren läggs. Mål, AI och terminal fungerar därför som för spells. SACRIFICE är i stället ett eget drag (se nedan).
 
-- **DEVOUR (Ghouls, 6 figurer):** äter döda kort i den **egna** gravhögen. Att äta ur motståndarens gravhög väntar; det passar kanske bättre för en helt annan fraktion senare. *Öppet:* försvinner kortet ur gravhögen (så att Resurrect inte kan väcka det)? Grundvärden eller värdena när kortet dog? Hur skiljer sig DEVOUR från hjälteförmågan Feast of Graves?
-- **SACRIFICE (Academics):** "Sacrifices itself to boost another card". Inget kort har den än; några Academics-figurer ska få den. Passar deras identitet att skydda (offra en skör figur för att stärka t.ex. ett ritualkort). Kostar ritual om kortet har ☩ (se Ritual).
+- **DEVOUR (Ghouls, byggt):** bara på de stora korten i tier 3, **Butcher of the Underworld** och **Catacomb Tyrant** (4 kort i leken). Bone Gnawer, Grave Eater, Hollow-Eyed Stalker och Charnel Priest hade också DEVOUR men fick `special=None` 2026-11-18: 12 kort med DEVOUR var på tok för starkt, eftersom Ghouls redan var starkast. Förmågan: när kortet läggs väljer spelaren ett dött kort (figur) i den **egna** gravhögen. Figuren får dess ⚔️ attack och ❤️ max health för alltid (`Devour`, `increase_attack`, `increase_health`). Värdena är det döda kortets egna utan buffar (buffarna försvann när det dog) men med bestående ändringar som Wither. **Det ätna kortet försvinner ur gravhögen** (`Player.eat_from_graveyard`), så det kan inte återupplivas (beslutat av användaren). Är gravhögen tom läggs kortet ändå, utan att äta. Att äta ur motståndarens gravhög väntar; det passar kanske bättre för en helt annan fraktion senare. *Öppet:* hur ska hjälteförmågan Feast of Graves skilja sig från DEVOUR? (Förslag: Feast låter hjälten ge ett kort som redan ligger på brädet ett dött korts stats.)
+- **SACRIFICE (Academics, byggt):** finns på **Miskatonic Student** och **Dark Occultist** (beslutat av användaren). I stället för att anfalla offrar kortet sig: det dör och ger sin ❤️ health (som max health) och 🛡️ armor till ett annat eget kort för alltid. Samma regler som för anfall: kortet måste ha legat sedan förra turen, och Terror hindrar det. Kortet dör som vanligt, så dess ☩ försvinner från ritualen (båda har ☩ 1). Passar Academics identitet att skydda: offra en skör figur för att hålla t.ex. ett ritualkort (❤️ 2–3, 🛡️ 0) vid liv. I koden: draget `Sacrifice(card, target)` i `move.py`, `Game.sacrifice()`, och `Game.get_legal_moves()` ger ett drag per annat eget kort.
 - **ABSORB (Shoggoths), notering, väntar:** Shoggoths absorberar närliggande pjäser för att få liv och attack (se `README.md`). Det ska heta Absorb, inte Sacrifice. Byggs när Shoggoths byggs.
-- **SUMMON (Wilbur Whateley):** ska hämta ett **slumpat** kort ur leken, inte ett valfritt (som Recruit i Hearthstone, Kobolds & Catacombs, som lägger en slumpad figur ur leken på brädet). Texten i `Special.SUMMON` ("a card of your choice") ska ändras när den byggs.
-- **STUDY (Academics):** drar ett kort när kortet läggs (som Battlecry: Draw a card i Hearthstone).
+- **SUMMON (Wilbur Whateley, byggt):** när kortet läggs hamnar en **slumpad** figur ur den egna leken direkt på brädet (`SummonRandomFromDeck`, `Player.summon_from_deck`, `Deck.remove`), som Recruit i Hearthstone (Kobolds & Catacombs). Den nya figuren måste vänta en tur innan den får anfalla. Är brädet fullt eller finns ingen figur i leken händer inget.
+- **STUDY (Academics, byggt):** drar ett kort när kortet läggs (`DrawCards(1)`, som Battlecry: Draw a card i Hearthstone).
+- Rapporten efter draget visar förmågorna: "enters the board [⚔️ 7 ❤️ 5 🛡️ 3]", "Ossuary Keeper is eaten", "enters the board from the deck", "draws 1 card" (`snapshot.py` håller reda på vilka kort som finns i lek, hand, bräde och gravhög).
 
 ### Deck (`deck.py`) – under diskussion, inte bestämt
 
@@ -232,7 +238,7 @@ Riktning som diskuterats:
 **Kontrollerat:** alla moduler importeras; 300 matcher med slumpbotar utan krascher, alla spells spelades; tio regelkontroller (buffar som går ut, Seal of Apep, Mirror, Curse, Infect, Veil, blodpris, läkningstak, overload) stämde. Med slumpbotar vann Academics 39 % och Ghouls 61 % (före spelleffekterna: Academics 20 % med en enklare bot). Testskripten låg i scratchpad och finns inte i projektet.
 
 **Inte byggt än:**
-- Figurernas förmågor (`Special` på figurer): DEVOUR, SACRIFICE, STUDY, SUMMON. Bara GUARD fungerar.
+- ABSORB (Shoggoths). GUARD, DEVOUR, STUDY, SUMMON och SACRIFICE är byggda.
 - Hjälteförmågorna Feast of Graves och The Eleventh Seal.
 - Visa i terminalen att ett kort är smittat (Infect) eller att Mirror/Curse väntar.
 - Visa motståndarens bräde under ens egen tur, och en text efter anfall (hur mycket skada, vilket kort som dog).
