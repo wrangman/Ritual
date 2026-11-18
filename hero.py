@@ -22,6 +22,7 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 from enum import Enum
+from buff import BuffList
 
 
 # Hero abilities - kind of like specials
@@ -36,11 +37,13 @@ class Hero:
    def __init__(self, name="Unnamed Hero", health=30, attack=0, armor=0, magic=0, ability=None):
       self.name = name
       self.health = health
+      self.max_health = health   # läkning kan aldrig ge mer än så här
       self.attack = attack
       self.armor = armor
       self.magic = magic
       self.ritual = 0
       self.ability = ability   # ett HeroAbility-värde eller None
+      self.buffs = BuffList()  # tillfälliga ändringar, till exempel Seal of Apep
 
    def __str__(self):
       return (f"{self.name} (Hero); "
@@ -58,14 +61,46 @@ class Hero:
    def take_damage(self, amount):
       self.health -= amount
 
+   # Läker, men aldrig över max_health
    def restore_health(self, amount):
-      self.health += amount
+      self.health = min(self.health + amount, self.max_health)
 
    def increase_magic(self, amount):
       self.magic += amount
 
    def repair_armor(self, amount):
       self.armor += amount
+
+   # Hjälten bygger vidare på sin ritual
+   def add_ritual(self, amount):
+      self.ritual += amount
+
+   # Motståndaren sänker ritualen, men aldrig under 0.
+   # Är ritualen skyddad (Seal of Apep) händer ingenting.
+   def lose_ritual(self, amount):
+      if self.is_ritual_protected():
+         return
+      self.ritual = max(0, self.ritual - amount)
+
+   # Kan ritualen sänkas eller stjälas just nu?
+   def is_ritual_protected(self):
+      return self.buffs.ritual_protected()
+
+   # Hjälten kan alltid bli anfallen när armén är tom, och har inget skydd mot figurer.
+   # Metoderna finns så att hjälten kan vara mål precis som ett kort.
+   def can_be_attacked(self):
+      return True
+
+   def is_immune_to_melee(self):
+      return self.buffs.no_melee_damage()
+
+   # Buffar
+
+   def add_buff(self, buff):
+      self.buffs.add(buff)
+
+   def remove_expired_buffs(self, player, this_turn_only):
+      self.buffs.remove_expired(player, this_turn_only)
 
    # Get methods
 
@@ -75,14 +110,15 @@ class Hero:
    def get_health(self):
       return self.health
    
+   # attack, armor och magic räknas med buffarna, men aldrig under 0
    def get_attack(self):
-      return self.attack
-   
+      return max(0, self.attack + self.buffs.attack_bonus())
+
    def get_armor(self):
-      return self.armor
+      return max(0, self.armor + self.buffs.armor_bonus())
 
    def get_magic(self):
-      return self.magic
+      return max(0, self.magic + self.buffs.magic_bonus())
    
    def get_ritual(self):
       return self.ritual
@@ -118,6 +154,9 @@ class Hero:
    def short(self):
       hero_title = []
       hero_title.append(f"❤️ {self.health}")
-      hero_title.append(f"🛡️ {self.armor}")
+      hero_title.append(f"🛡️ {self.get_armor()}")
       hero_title.append(f"☩ {self.ritual}")
-      return f"{self.name} [{' '.join(hero_title)}]"
+      sealed = ""
+      if self.is_ritual_protected():
+         sealed = " (Ritual sealed)"
+      return f"{self.name} [{' '.join(hero_title)}]{sealed}"

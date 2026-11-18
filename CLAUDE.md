@@ -6,7 +6,7 @@
 - Sluta ge snabblösningar. Ge alltid bästa praxis och absolut bästa OOP.
 - Basera designförslag på etablerade källor (designmönster, hur riktiga kortspelsmotorer är byggda) och ange källorna. Gissa inte. Skilj tydligt på vad källan faktiskt säger och vad som är din egen tillämpning på projektet.
 - Tänk igenom ansvarsfördelning och relationer mellan klasser innan du föreslår kod. Fråga om designbeslut hellre än att gissa.
-- Spelinnehåll (kortnamn, specialtexter m.m.) och kod skrivs på engelska.
+- Spelinnehåll (kortnamn, specialtexter m.m.) och kod skrivs på engelska. Kommentarer i koden skrivs på svenska, eftersom det är bra för eleverna. Docstrings överst i filerna är på engelska.
 - Arv bara när beteendet faktiskt skiljer sig. Sammansättning (en spelare *har* en lek, en lek *innehåller* kort) är lika viktig som arv.
 
 ## Vad vi bygger
@@ -26,6 +26,8 @@ Strategin är att balansera: försvara sin ritual och sin hjälte, öka ritualen
 4. Man har byggt upp mer ritual än motståndaren. *Oklart om detta ska finnas kvar.*
 
 Man vinner INTE genom att motståndaren har noll ritual.
+
+Man kan förlora på sin egen effekt, till exempel om De Vermis Mysteriis slår ut den egna hjälten (som Life Tap/Hellfire i Hearthstone). Om båda vinner samtidigt blir det **oavgjort**, som i Hearthstone. I koden: `Game.has_won(player, opponent)`, `is_over()` och `determine_winner()` (ger `None` vid oavgjort).
 
 ### Fraktioner
 
@@ -92,24 +94,68 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 
 - Spelare 1 börjar. Slantsingling och mulligan väntar till senare.
 - Starthand: 5 kort.
-- I varje tur gör man två saker, i valfri ordning: **lägga ett kort** och **en action**, till exempel att anfalla med ett kort på brädet. När båda är gjorda går turen över.
+- I varje tur, i valfri ordning: **lägg så många kort du har råd med** (se Resursen) och gör **en action**, till exempel att anfalla med ett kort på brädet. *Om en action per tur ska finnas kvar, eller om alla kort i armén får anfalla en gång var, är inte bestämt.*
+- Turen går över när inget mer går att göra, eller när spelaren väljer "0) end turn", till exempel för att spara resurs till ett dyrt kort.
 - Finns inget kort som kan göra en action hoppas den över automatiskt.
-- Att kunna välja "pass" kommer senare, inte i första versionen.
-- Att spela en spell räknas som att lägga kortet för turen.
 - Man drar 1 kort i början av sin egen tur, även första turen, som i Hearthstone. Då har man fler val när man spelar.
+
+### Resursen för att lägga kort (bestämt och byggt)
+
+*Namnet är inte bestämt. "Essence" är bortvalt; det ska låta Darkest Dungeon/Lovecraft (förslag: Dread, Resolve, Devotion, Omen, Ichor). I koden heter den tills vidare `resource` (`Player.resource`, `Game.RESOURCE_PER_TURN`, `RESOURCE_NAME` i `terminal_ui.py`), så den byts lätt.*
+
+- **Overload** (som hos Shaman i Hearthstone): ett kort kan låna resurs från nästa tur. `Player.overload` dras av när resursen fylls på (`refill_resource()`), aldrig under 0.
+- Academics har två spells som ger mer att spendera nu (som Innervate i Hearthstone, men med ett pris). De ersatte Elder Sign och Litany of Unmaking, som överlappade Ward of the Unbegotten och Rite of the Thirteenth Hour. Två exemplar var, leken är kvar på 50 kort:
+  - **The Silver Key** (kostnad 0): +2 resurs nu, Overload (2). Man lånar från framtiden.
+  - **De Vermis Mysteriis** (kostnad 0): +2 resurs nu, den egna hjälten tar 3 skada. Man betalar med blod.
+- I koden: `Card.cost`; `Player.refill_resource()`, `gain_resource()`, `add_overload()`, `can_afford()`, `has_affordable_card()`; `Player.play_card()` drar kostnaden (och kastar `ValueError` om man inte har råd). Terminalen visar kostnaden i handen som `(2)` och vägrar kort man inte har råd med.
+
+
+- Som credits i Android: Netrunner: varje spelare får **+1 av resursen i början av sin tur**, börjar på 0 och har inget tak. Det som inte används **sparas** till nästa tur. Man kan alltså spara ihop till ett dyrt kort, till exempel ett ritualkort tidigt, men gör då mindre under tiden.
+- Alla får lika mycket, som mana i Hearthstone: resursen är inte kopplad till health eller ritual. (Ritualen som budget valdes bort: den som leder skulle få fler kort och dra ifrån, en positiv återkopplingsloop.)
+- Varje kort har en **kostnad** (`cost`, ett eget fält på `Card`). Man får lägga så många kort man har råd med.
+- Startkostnader: figurer kostar sin tier (1–3), ritualkort (tier 4) kostar 4, Academics basic spells kostar 1, övriga spells 2, tunga spells (Necronomicon, Pnakotic Manuscripts) 3. Justeras efter speltest. Kort som behöver vara dyrare (t.ex. Shoggoths stora monster, 6–8) flyttas till högre tier eller får en egen kostnad.
+- Samma mekanik för alla fraktioner. Senare kan varje fraktion visa sitt eget namn i spelet, t.ex. Sanity för Academics och Stamina för The Deep Ones.
 
 ### Spellkort (bestämt)
 
 - Spells spelas som i Hearthstone: välj kortet från handen, välj mål, och effekten sker direkt. Kortet hamnar aldrig på brädet.
+- **Guard skyddar inte mot spells.** En spell får träffa vilket fientligt kort som helst, eller hjälten (som Taunt i Hearthstone). Annars har Academics ingen chans. `Player.get_spell_targets()` ger hela armén plus hjälten.
+- Senare: varje spell (effekt) ska själv avgöra vilka mål den får välja, som i Hearthstone där kortets text styr (Fireplace: play requirements som `REQ_ENEMY_TARGET`). Just nu tillåts alla fientliga mål.
+- **Effekter är egna objekt (sammansättning).** `SpellCard` *har* en effekt, till exempel `DamageOneEnemy`, som gör jobbet med `apply(...)`. Samma effekt kan återanvändas av flera spells. Källa: Fireplace (`play = Hit(TARGET, 6)`) och Forge (`DealDamage`); mönstret Command/Strategy (Gang of Four). Ingen lång `if/elif` över `Special`.
+- **Styrkan i en effekt är spellens 🪄 magic** (skada, läkning, buff, hur mycket ritual som sänks eller stjäls). Undantag: Scroll of Rituals använder sin ☩. Plague och Scales of Leviathan hade 🪄 0 och fick 🪄 2.
+- En effekt svarar på `needs_target()` och `get_targets(game)`: effekten själv säger vilka mål som är tillåtna. Har en spell inga giltiga mål kan den inte spelas (den betalas inte).
+- Byggda effekter i `effect.py` (grupp A, omedelbara): `DamageOneEnemy(include_hero)`, `DamageAllEnemyCards(own_damage)`, `HealOwnHero`, `HealAllOwnCards`, `LowerAttack`, `RemoveArmor`, `BuffOwnCard(armor, magic, health, ritual_only)`, `LowerRitual`, `StealRitual`, `GainRitual`, `DrawCards(n)`, `ReviveRandom`, `ReturnRandomToHand`, `LookAtTopCards(n)`, `PayWithBlood(n)`, `GainResource(...)` och `Combined(...)` (flera effekter i samma spell, Composite-mönstret; bara den första får ett mål).
+- Läkning går aldrig över `max_health` (både kort och hjälte), som i Hearthstone. Återupplivade kort kommer tillbaka med full health.
+- **Buffar (grupp B, byggt):** effekter som varar "until your next turn" eller "this turn" är `Buff`-objekt (`buff.py`) som fästs på ett kort eller en hjälte, som enchantments i Hearthstone, `Buff` i Fireplace och buffar/debuffar i Darkest Dungeon. Kortets egna värden ändras aldrig: `get_attack()`, `get_armor()`, `get_magic()`, `can_attack()`, `has_guard()` osv. räknar in buffarna. När buffen går ut tas den bara bort. (Command-mönstret med `undo` valdes bort: `undo` blir fel när ett värde stannat på 0.)
+  - `CreatureCard` och `Hero` *har* en `BuffList` (sammansättning), så logiken står på ett ställe.
+  - En buff tillhör spelaren som lade den. "Until your next turn" går ut i början av den spelarens nästa tur, "this turn" i slutet av turen (`Game.remove_expired_buffs`). Kort som dör tappar sina buffar.
+  - Effekten `GiveBuff(receiver, ...)` ger buffar: Terror, Veil of Tiamat, Seal of Apep, Kiss of Lilith, Whispered Hex, Scroll of Dzyan, Rite of the Thirteenth Hour, The King in Yellow, Seal of the Black Sun, Ward of the Unbegotten.
+  - Ett kort som är dolt (Veil of Tiamat) kan inte anfallas av figurer och skyddar inte heller hjälten. Spells kan fortfarande träffa det.
+  - `Faction` skapar kort och hjältar med `copy.deepcopy`, så att varje kopia har en egen lista med buffar.
+- **Triggers (grupp C, byggt):** effekter som väntar på att något ska hända är `Trigger`-objekt (`trigger.py`), Observer-mönstret (Gang of Four), som Secrets och gift i Hearthstone och event-lyssnare i Fireplace. `Game` har en lista med triggers och meddelar dem `before_attack` (kan ta hand om anfallet), `after_attack` och `at_turn_start`. En trigger som har gjort sitt markerar sig som förbrukad och tas bort.
+  - **Infect:** fiendekortet tar 🪄 magic i skada i början av varje tur för den som smittade det, tills kortet dör eller lämnar brädet.
+  - **Mirror of Nitocris:** nästa melee-anfall mot det valda egna kortet träffar anfallaren i stället (engångs).
+  - **Curse of Choronzon:** nästa fiendekort som anfaller ett av dina ritualkort tar samma skada som det gjorde (engångs).
+  - Triggers gäller bara melee-anfall (`Game.attack`), inte spells.
+- **Alla spells har en effekt.** Det tillfälliga blocket som bytte ut spells utan effekt är borttaget.
 - Man kan ångra medan man väljer (kort eller mål). När man har bekräftat är spellen kastad och kan inte tas tillbaka.
 - Exempel: tier 5 hos Ghouls (Resurrect, Plague, Infect, Ruin m.fl.).
 - **Tung dark magic kostar health.** Academics tyngsta spells skadar de egna korten i stället för att använda en egen stat för förstånd. Exempel: Necronomicon gör 3 skada på ett av de egna korten.
-- **Utan eget kort på brädet fungerar inte tung magi.** Man får fortfarande spela spellen, men den gör ingenting. Spelet ska varna innan man bekräftar. Detta är inte byggt än.
+- **Mål (bestämt, som i Hearthstone):** spelaren väljer högst **ett** mål per spell. Allt annat sker automatiskt eller slumpat.
+  - "One enemy" (fiendens figur eller hjälte): Book of Sorrows, Necrotic Bolt, Necronomicon. Texterna ska säga "one enemy".
+  - Bara fiendens figurer: Infect, Drain Life, Wither, Terror, Whispered Hex, Cultes des Goules. Area-spells (Plague, Pnakotic Manuscripts) träffar bara figurer, inte hjälten.
+  - Eget kort: Bone Ward, Kiss of Lilith, Ward of the Unbegotten, Mirror of Nitocris. Eget ritualkort: Veil of Tiamat, Scales of Leviathan, Codex of the Eleven Keys.
+  - Inget mål: resten (gäller alla kort, spelaren eller ritualen).
+  - Drain Life läker automatiskt den egna hjälten (som Drain Life i Hearthstone).
+  - Resurrect och Book of the Nameless Dead hämtar ett **slumpat** kort ur gravhögen (som Resurrect i Hearthstone).
+  - Forbidden Codex: titta på tre kort i leken och ta ett (som Tracking i Hearthstone).
+- **Priset för tung magi** (Necronomicon, Unaussprechlichen Kulten, R'lyeh Text): skadan tas automatiskt av ett slumpat eget kort som har **minst lika mycket health som priset** (kortet får dö, men ett kort med 2 health väljs aldrig för ett pris på 3). Finns inget sådant kort tar den egna hjälten skadan, och dör hjälten förlorar man (oavgjort om motståndarens hjälte dör samtidigt). (Ersätter den gamla regeln att tung magi inte fungerar utan eget kort.)
 
 ### Ritual (bestämt)
 
 - **Ritualkort** är bara tier 4-korten: de finns till för att bygga ritual och kan inte slåss (⚔️ 0). Andra kort kan också ha lite ☩, men räknas inte som ritualkort.
 - I koden är ritualkort klassen `RitualCard(CreatureCard)` i `card.py`. Den är en egen klass eftersom beteendet skiljer sig: `can_attack()` ger `False` (för `CreatureCard` ger den `True`), och bara ritualkort kan få skydds-spells. Spelet känner igen dem med `isinstance(card, RitualCard)`.
+- **När ☩ räknas (bestämt):** i början av sin tur får hjälten ☩ från alla egna kort på brädet (`Player.collect_ritual()` → `Hero.add_ritual()`), så länge korten ligger kvar. Därför är det viktigt att skydda ritualkorten. Når man målet vinner man direkt. Målet 15 kan behöva höjas.
 - Sätt att bygga ritual: ritualkort (snabbt, men oskyddat), vanliga kort med lite ☩ (långsamt men säkrare) och spells.
 - Ritual kan stjälas, men bara av fraktioner med dark magic: Ghouls och Academics.
 - Ritualkort skyddas med `GUARD` på starka melee-kort (fienden måste anfalla dem först, som Taunt i Hearthstone; namnet Guard kommer från The Elder Scrolls: Legends) och med skydds-spells (Ghouls: Veil of Tiamat, Scales of Leviathan, Seal of Apep, Kiss of Lilith, Curse of Choronzon).

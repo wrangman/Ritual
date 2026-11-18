@@ -10,6 +10,9 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 import copy
+from effect import (DamageOneEnemy, DamageAllEnemyCards, HealOwnHero, LowerAttack,
+                    BuffOwnCard, LowerRitual, StealRitual, ReviveRandom, Combined,
+                    GiveBuff, Infect, CurseRitualAttacker)
 from faction import Faction
 from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionName
 from hero import Hero, HeroAbility
@@ -25,6 +28,7 @@ tier_1 = [
                 health=2,
                 ritual=0,
                 special=None,
+                cost=1,
                 rarity=Rarity.COMMON),
 
    CreatureCard(FactionName.GHOULS, "Gravedigger",
@@ -35,6 +39,7 @@ tier_1 = [
                 health=1,
                 ritual=0,
                 special=None,
+                cost=1,
                 rarity=Rarity.COMMON),
 
    CreatureCard(FactionName.GHOULS, "Changeling Child",
@@ -45,6 +50,7 @@ tier_1 = [
                 health=1,
                 ritual=0,
                 special=None,
+                cost=1,
                 rarity=Rarity.COMMON),
 
    CreatureCard(FactionName.GHOULS, "Tunnel Scavenger",
@@ -55,6 +61,7 @@ tier_1 = [
                 health=2,
                 ritual=0,
                 special=None,
+                cost=1,
                 rarity=Rarity.COMMON),
 
    CreatureCard(FactionName.GHOULS, "Bone Gnawer",
@@ -65,6 +72,7 @@ tier_1 = [
                 health=3,
                 ritual=0,
                 special=Special.DEVOUR,
+                cost=1,
                 rarity=Rarity.COMMON),
 
    CreatureCard(FactionName.GHOULS, "Mourner in Black",
@@ -75,6 +83,7 @@ tier_1 = [
                 health=2,
                 ritual=1,
                 special=None,
+                cost=1,
                 rarity=Rarity.COMMON),
 ]
 
@@ -88,6 +97,7 @@ tier_2 = [
                 health=2,
                 ritual=0,
                 special=Special.DEVOUR,
+                cost=2,
                 rarity=Rarity.RARE),
 
    CreatureCard(FactionName.GHOULS, "Crypt Warden",
@@ -98,6 +108,7 @@ tier_2 = [
                 health=2,
                 ritual=0,
                 special=None,
+                cost=2,
                 rarity=Rarity.RARE),
 
    CreatureCard(FactionName.GHOULS, "Ossuary Keeper",
@@ -108,6 +119,7 @@ tier_2 = [
                 health=3,
                 ritual=0,
                 special=None,
+                cost=2,
                 rarity=Rarity.RARE),
 
    CreatureCard(FactionName.GHOULS, "Hollow-Eyed Stalker",
@@ -118,6 +130,7 @@ tier_2 = [
                 health=3,
                 ritual=1,
                 special=Special.DEVOUR,
+                cost=2,
                 rarity=Rarity.RARE),
 
    CreatureCard(FactionName.GHOULS, "Charnel Priest",
@@ -128,6 +141,7 @@ tier_2 = [
                 health=2,
                 ritual=1,
                 special=Special.DEVOUR,
+                cost=2,
                 rarity=Rarity.RARE),
 ]
 
@@ -141,6 +155,7 @@ tier_3 = [
                 health=4,
                 ritual=1,
                 special=Special.GUARD,
+                cost=3,
                 rarity=Rarity.EPIC),
 
    CreatureCard(FactionName.GHOULS, "Butcher of the Underworld",
@@ -151,6 +166,7 @@ tier_3 = [
                 health=8,
                 ritual=1,
                 special=Special.DEVOUR,
+                cost=3,
                 rarity=Rarity.EPIC),
 
    CreatureCard(FactionName.GHOULS, "Elder Ghoul",
@@ -161,6 +177,7 @@ tier_3 = [
                 health=6,
                 ritual=3,
                 special=Special.GUARD,
+                cost=3,
                 rarity=Rarity.EPIC),
 
    CreatureCard(FactionName.GHOULS, "Catacomb Tyrant",
@@ -171,6 +188,7 @@ tier_3 = [
                 health=6,
                 ritual=1,
                 special=Special.DEVOUR,
+                cost=3,
                 rarity=Rarity.EPIC),
 ]
 
@@ -182,6 +200,7 @@ ritual_cards = [
               health=8,
               ritual=4,
               special=None,
+              cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.GHOULS, "The Forbidden Painting",
@@ -190,6 +209,7 @@ ritual_cards = [
               health=8,
               ritual=5,
               special=None,
+              cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.GHOULS, "Feast of the Dead",
@@ -198,6 +218,7 @@ ritual_cards = [
               health=10,
               ritual=4,
               special=None,
+              cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.GHOULS, "Rite of Exhumation",
@@ -206,6 +227,7 @@ ritual_cards = [
               health=10,
               ritual=4,
               special=None,
+              cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.GHOULS, "Altar of Bones",
@@ -214,6 +236,7 @@ ritual_cards = [
               health=10,
               ritual=5,
               special=None,
+              cost=4,
               rarity=Rarity.LEGENDARY),
 ]
 
@@ -223,92 +246,122 @@ spell_cards = [
              magic=0,
              ritual=0,
              special=Special.RESURRECT,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=ReviveRandom()),
 
    SpellCard(FactionName.GHOULS, "Plague",
-             magic=0,
+             magic=2,
              ritual=0,
              special=Special.PLAGUE,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=DamageAllEnemyCards()),
 
    SpellCard(FactionName.GHOULS, "Infect",
              magic=2,
              ritual=0,
              special=Special.INFECT,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=Infect()),
 
    SpellCard(FactionName.GHOULS, "Ruin",
              magic=3,
              ritual=0,
              special=Special.RUIN,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=LowerRitual()),
 
    SpellCard(FactionName.GHOULS, "Necrotic Bolt",
              magic=3,
              ritual=0,
              special=Special.NECROTIC_BOLT,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=DamageOneEnemy()),
 
    SpellCard(FactionName.GHOULS, "Drain Life",
              magic=2,
              ritual=0,
              special=Special.DRAIN_LIFE,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=Combined(DamageOneEnemy(include_hero=False), HealOwnHero())),
 
    SpellCard(FactionName.GHOULS, "Wither",
              magic=3,
              ritual=0,
              special=Special.WITHER,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=LowerAttack()),
 
    SpellCard(FactionName.GHOULS, "Terror",
              magic=2,
              ritual=0,
              special=Special.TERROR,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=GiveBuff(GiveBuff.ENEMY_CARD, cannot_attack=True)),
 
    SpellCard(FactionName.GHOULS, "Bone Ward",
              magic=2,
              ritual=0,
              special=Special.BONE_WARD,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=BuffOwnCard(armor=True)),
 
    SpellCard(FactionName.GHOULS, "Soul Siphon",
              magic=3,
              ritual=3,
              special=Special.SOUL_SIPHON,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=StealRitual()),
 
    # Spells that protect ritual
    SpellCard(FactionName.GHOULS, "Veil of Tiamat",
              magic=3,
              ritual=0,
              special=Special.VEIL_OF_TIAMAT,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=GiveBuff(GiveBuff.OWN_RITUAL_CARD, cannot_be_attacked=True)),
 
    SpellCard(FactionName.GHOULS, "Scales of Leviathan",
-             magic=0,
+             magic=2,
              ritual=0,
              special=Special.SCALES_OF_LEVIATHAN,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=BuffOwnCard(armor=True, magic=True, ritual_only=True)),
 
    SpellCard(FactionName.GHOULS, "Seal of Apep",
              magic=0,
              ritual=0,
              special=Special.SEAL_OF_APEP,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=GiveBuff(GiveBuff.OWN_HERO, ritual_protected=True)),
 
    SpellCard(FactionName.GHOULS, "Kiss of Lilith",
              magic=0,
              ritual=0,
              special=Special.KISS_OF_LILITH,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=GiveBuff(GiveBuff.OWN_CARD, guard=True)),
 
    SpellCard(FactionName.GHOULS, "Curse of Choronzon",
              magic=0,
              ritual=0,
              special=Special.CURSE_OF_CHORONZON,
-             rarity=Rarity.RARE),
+             cost=2,
+             rarity=Rarity.RARE,
+             effect=CurseRitualAttacker()),
 ]
 
 # Tier 1-3: two copies of each card. ritual and spell one copy each. Total 50 cards.

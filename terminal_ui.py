@@ -20,6 +20,8 @@ RESET = "\033[0m"   # tillbaka till terminalens vanliga färg
 
 LETTERS = "abcdefghijklmnopqrstuvwxyz"   # korten i armén väljs med bokstäver
 
+RESOURCE_NAME = "Resource"   # vad resursen heter i spelet (namnet är inte bestämt än)
+
 
 # Ger en ANSI-kod som färgar texten efter den, med exakt den här färgen (röd, grön, blå 0–255)
 def rgb(red, green, blue):
@@ -53,7 +55,7 @@ class TerminalUI:
    def colored(self, card):
       return f"{self.color_for(card)}{card.short()}{RESET}"
 
-   # Numrerar färdiga textrader: "1. ...", "2. ..." och så vidare, en per rad
+   # Numbers finished lines of text: "1. ...", "2. ..." and so on, one per line
    def numbered(self, lines):
       numbered_lines = []
       for number, line in enumerate(lines, start=1):
@@ -63,11 +65,12 @@ class TerminalUI:
 
    # Visning
 
-   # Visar spelarens hand som en numrerad lista i färg, en rad per kort
+   # Visar spelarens hand som en numrerad lista i färg, en rad per kort.
+   # Kostnaden står först inom parentes, till exempel "1. (2) Dark Occultist [...]".
    def show_hand(self, player):
       lines = []
       for card in player.get_hand():
-         lines.append(self.colored(card))
+         lines.append(f"({card.get_cost()}) {self.colored(card)}")
       return self.numbered(lines)
 
    # Visar spelarens armé med bokstäver, med | mellan korten
@@ -93,11 +96,20 @@ class TerminalUI:
          color = ""   # okänd fraktion: ingen färg
       else:
          color = colors[0]   # samma färg som fraktionens figurer
-      return f"+. {color}{hero.short()}{RESET}"
+      goal = player.get_faction().get_ritual_goal()
+      return f"+. {color}{hero.short()}{RESET}  (ritual goal ☩ {goal})"
 
-   # Visar vem som vann. Vem det är bestämmer Game, terminalen visar det bara.
+   # Shows who won. Game decides the winner, the terminal only shows it.
    def show_winner(self, player):
       print(f"WINNER BY A MILE - MAYBE!\n\n {player.get_name()}")
+
+   # Ett kort meddelande till spelaren
+   def show_message(self, text):
+      print(text)
+
+   # Båda vann samtidigt, till exempel om båda hjältarna dog av samma effekt
+   def show_draw(self):
+      print("DRAW! Both rituals ended in madness.")
 
 
    # Val
@@ -114,7 +126,11 @@ class TerminalUI:
       print(f"\n--- {player.get_name()}'s turn ---")
       print("Hero:")
       print(self.show_hero(player))
-      print("Hand:")
+      resource_line = f"{RESOURCE_NAME}: {player.get_resource()}"
+      if player.get_overload() > 0:
+         resource_line += f"  (overload: {player.get_overload()} less next turn)"
+      print(resource_line)
+      print("Hand (cost):")
       print(self.show_hand(player))
       if army:
          print("Army:")
@@ -126,7 +142,7 @@ class TerminalUI:
          options.append(f"1-{len(hand)} play a card")
       if can_act:
          options.append(f"a-{LETTERS[len(army) - 1]} act with a card")
-      options.append("0) pass")
+      options.append("0) end turn")
       question = ", ".join(options) + ": "
 
       while True:
@@ -136,7 +152,11 @@ class TerminalUI:
             return "pass", None
 
          if can_play and answer.isdigit() and 1 <= int(answer) <= len(hand):
-            return "card", hand[int(answer) - 1]
+            card = hand[int(answer) - 1]
+            if player.can_afford(card):
+               return "card", card
+            print(f"Not enough {RESOURCE_NAME} for {card.get_name()} (costs {card.get_cost()}).")
+            continue
 
          if can_act and len(answer) == 1 and answer in LETTERS[:len(army)]:
             card = army[LETTERS.index(answer)]
@@ -147,9 +167,9 @@ class TerminalUI:
 
          print("Not a valid choice.")
 
-   # Visar de tillåtna målen och låter spelaren välja ett. Returnerar målet.
-   # Vilka mål som är tillåtna bestämmer spelet (Player.get_targets), inte terminalen.
-   # Målen visas utan färg: colored() behöver get_faction(), och hjälten har ingen fraktion.
+   # Shows the allowed targets and lets the player pick one. Returns the target.
+   # The game decides which targets are allowed (Player.get_targets), not the terminal.
+   # Targets are shown without color: colored() needs get_faction(), and the hero has no faction.
    def choose_target(self, targets):
       lines = []
       for target in targets:
@@ -161,4 +181,18 @@ class TerminalUI:
          answer = input(f"Choose a target 1-{len(targets)}: ").strip()
          if answer.isdigit() and 1 <= int(answer) <= len(targets):
             return targets[int(answer) - 1]
+         print("Not a valid choice.")
+
+   # Visar några kort (till exempel de översta i leken) och låter spelaren ta ett. Returnerar kortet.
+   def choose_card(self, cards):
+      lines = []
+      for card in cards:
+         lines.append(f"({card.get_cost()}) {self.colored(card)}")
+      print("Choose a card to take into your hand:")
+      print(self.numbered(lines))
+
+      while True:
+         answer = input(f"Choose a card 1-{len(cards)}: ").strip()
+         if answer.isdigit() and 1 <= int(answer) <= len(cards):
+            return cards[int(answer) - 1]
          print("Not a valid choice.")

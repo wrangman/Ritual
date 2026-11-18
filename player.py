@@ -10,7 +10,7 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 from hero import Hero
-from card import SpellCard
+from card import SpellCard, RitualCard
 from deck import Deck
 
 
@@ -24,6 +24,8 @@ class Player:
       self.hand = []
       self.army = []        # korten spelaren har på brädet
       self.graveyard = []   # döda; kastade kort
+      self.resource = 0     # betalar för korten man lägger (namnet är inte bestämt än)
+      self.overload = 0     # så mycket mindre resurs man får nästa tur (lånat i förväg)
 
    def __str__(self):
       return (f"{self.name} ({self.faction.get_name().value}) – "
@@ -38,19 +40,30 @@ class Player:
       self.hand.extend(drawn)
       return drawn
 
-   # Spelar ett kort från handen. Figurer hamnar i armén.
-   # Spells hamnar aldrig på brädet utan går direkt till döda högen (effekten byggs senare).
+   # Spelar ett kort från handen och betalar dess kostnad. Figurer hamnar i armén.
+   # Spells hamnar aldrig på brädet utan går direkt till döda högen. Effekten sköts av Game.
    def play_card(self, card):
+      if not self.can_afford(card):
+         raise ValueError(f"Not enough resource to play {card.get_name()}")
+      self.resource -= card.get_cost()
       self.hand.remove(card)
       if isinstance(card, SpellCard):
          self.graveyard.append(card)
       else:
          self.army.append(card)
 
-   # Ett kort i armén dör och flyttas till döda högen
+   # Ett kort i armén dör och flyttas till döda högen. Buffarna försvinner.
    def kill_card(self, card):
       self.army.remove(card)
+      card.clear_buffs()
       self.graveyard.append(card)
+
+   # Tar bort buffarna som går ut, på alla kort i armén och på hjälten.
+   # player är den vars tur börjar (eller slutar, om this_turn_only är True).
+   def remove_expired_buffs(self, player, this_turn_only):
+      for card in self.army:
+         card.remove_expired_buffs(player, this_turn_only)
+      self.hero.remove_expired_buffs(player, this_turn_only)
 
    def discard(self, card):
       self.hand.remove(card)
@@ -66,6 +79,17 @@ class Player:
       self.graveyard.remove(card)
       self.army.append(card)
       
+   # Tar de översta korten ur leken för att titta på dem (Forbidden Codex).
+   # De ligger varken i leken eller i handen förrän take_into_hand eller return_to_deck_bottom anropas.
+   def reveal_top_cards(self, amount):
+      return self.deck.draw(amount)
+
+   def take_into_hand(self, card):
+      self.hand.append(card)
+
+   def return_to_deck_bottom(self, card):
+      self.deck.put_on_bottom(card)
+
    # Mulligan: "jag vill inte ha det här kortet". Ett nytt kort dras, det gamla läggs sist i leken.
    #FIXME: ska kunna slänga alla kort eller bara två?
    def mulligan(self, card):
@@ -82,34 +106,92 @@ class Player:
    def is_wiped_out(self):
       return not self.army and not self.hand and len(self.deck) == 0
 
-   # Finns det något kort i armén som kan göra en action? (Ritualkort kan inte anfalla.)
+   # Resursen fylls på i början av turen. Det som inte används sparas till nästa tur,
+   # som credits i Android: Netrunner. Overload från förra turen dras av, men aldrig under 0.
+   def refill_resource(self, amount):
+      self.resource += amount - self.overload
+      if self.resource < 0:
+         self.resource = 0
+      self.overload = 0
+
+   # Extra resurs mitt i turen, till exempel från en spell
+   def gain_resource(self, amount):
+      self.resource += amount
+
+   # Lånar från nästa tur: då får man så här mycket mindre
+   def add_overload(self, amount):
+      self.overload += amount
+
+   # Har spelaren råd att lägga kortet?
+   def can_afford(self, card):
+      return card.get_cost() <= self.resource
+
+   # Finns det något kort i handen som spelaren har råd med?
+   def has_affordable_card(self):
+      for card in self.hand:
+         if self.can_afford(card):
+            return True
+      return False
+
+   # Finns det något kort i armén som kan göra en action?
+   # (Ritualkort kan inte anfalla, och inte heller kort med en buff som Terror.)
    def has_card_that_can_act(self):
       for card in self.army:
          if card.can_attack():
             return True
       return False
 
+   # I början av turen ger varje kort i armén sin ☩ till hjälten.
+   # Ritualen växer bara så länge korten ligger kvar, därför är det viktigt att skydda dem.
+   def collect_ritual(self):
+      total = 0
+      for card in self.get_army():
+         total += card.get_ritual()
+      self.hero.add_ritual(total)
+
    def clear_dead_cards(self):
       for card in self.get_army():
          if card.is_dead(): 
             self.kill_card(card)
 
+   def get_spell_targets(self):
+      return self.get_army() + [self.get_hero()]
 
+   # Ligger kortet i spelarens armé?
+   def owns_card(self, card):
+      return card in self.army
+
+   # Bara ritualkorten i armén (mål för skydds- och buff-spells som Scales of Leviathan)
+   def get_ritual_cards(self):
+      ritual_cards = []
+      for card in self.get_army():
+         if isinstance(card, RitualCard):
+            ritual_cards.append(card)
+      return ritual_cards
+
+
+   # Vilka mål får en figur anfalla? Kort som en buff gömmer (Veil of Tiamat) räknas inte alls:
+   # de kan inte anfallas och skyddar inte heller hjälten.
    def get_targets(self):
+      attackable = []
+      for card in self.get_army():
+         if card.can_be_attacked():
+            attackable.append(card)
+
       valid_targets = []
 
-      for target in self.get_army():
+      for target in attackable:
          if target.has_guard():
             valid_targets.append(target)
 
       if valid_targets:
          return valid_targets
-      
+
       else:
-         if len(self.get_army()) > 0:
-            return self.get_army()
+         if len(attackable) > 0:
+            return attackable
          else:
-            return [self.get_hero()] #expects list datatype 
+            return [self.get_hero()] #expects list datatype
 
 
    # Get methods
@@ -133,3 +215,9 @@ class Player:
 
    def get_deck(self):
       return self.deck
+
+   def get_resource(self):
+      return self.resource
+
+   def get_overload(self):
+      return self.overload

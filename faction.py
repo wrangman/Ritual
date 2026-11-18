@@ -30,8 +30,10 @@ class Faction:
    def get_hero(self):
       return self.hero 
    
+   # deepcopy och inte copy: varje kort och hjälte har en egen lista med buffar.
+   # copy.copy skulle låta kopiorna dela samma lista, så att en buff hamnade på alla kopior.
    def create_hero(self):
-      return copy.copy(self.hero)
-   
+      return copy.deepcopy(self.hero)
+
    def create_cards(self):
-      return [copy.copy(card) for card in self.cards]
+      return [copy.deepcopy(card) for card in self.cards]
