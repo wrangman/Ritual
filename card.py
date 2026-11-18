@@ -164,6 +164,21 @@ class CreatureCard(Card):
               f"magic={self.magic!r}, health={self.health!r}, ritual={self.ritual!r}, "
               f"special={self.special!r}, rarity={self.rarity!r})")
 
+   def is_dead(self):
+      return self.health <= 0
+      
+   def take_damage(self, amount):
+      self.health -= amount
+
+   def restore_health(self, amount):
+      self.health += amount
+
+   def increase_magic(self, amount):
+      self.magic += amount
+
+   def repair_armor(self, amount):
+      self.armor += amount
+
    def short(self):
       stats = []
       if self.attack > 0:

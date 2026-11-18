@@ -55,6 +55,18 @@ class Hero:
    def is_dead(self):
       return self.health <= 0
       
+   def take_damage(self, amount):
+      self.health -= amount
+
+   def restore_health(self, amount):
+      self.health += amount
+
+   def increase_magic(self, amount):
+      self.magic += amount
+
+   def repair_armor(self, amount):
+      self.armor += amount
+
    # Get methods
 
    def get_name(self):

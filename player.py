@@ -132,6 +132,16 @@ class Player:
 
          print("Not a valid choice.")
 
+
+   def clear_dead_cards(self):
+      for card in self.get_army():
+         if card.is_dead(): 
+            self.kill_card(card)
+
+
+   def attack(self, attacker, target):
+      damage = attacker.damage_against()
+
    # Get methods
    def get_name(self):
       return self.name

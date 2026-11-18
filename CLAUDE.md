@@ -90,7 +90,7 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - Finns inget kort som kan göra en action hoppas den över automatiskt.
 - Att kunna välja "pass" kommer senare, inte i första versionen.
 - Att spela en spell räknas som att lägga kortet för turen.
-- Man drar inte i början av turen. Efter att man har lagt sitt kort drar man automatiskt 1 nytt kort, så handen fylls på igen.
+- Man drar 1 kort i början av sin egen tur, även första turen, som i Hearthstone. Då har man fler val när man spelar.
 
 ### Spellkort (bestämt)
 
