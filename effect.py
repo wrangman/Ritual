@@ -5,8 +5,9 @@ apply() can be called to use a spell. Each kind of effect is its own small
 class, and the same effect can be reused by many spells (Command/Strategy
 pattern, like the actions in Fireplace).
 
-The strength of an effect is the spell's 🪄 magic, unless the card says
-otherwise (Scroll of Rituals uses its ☩ ritual).
+Spells have no stats of their own, as in Hearthstone. How strong an effect
+is (how much damage, healing, ritual ...) is given when the effect is created,
+for example DamageOneEnemy(7). Magic damage is lowered by the target's 🪄 magic.
 """
 
 __author__ = "Johan Wrangö"
@@ -14,7 +15,7 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 import random
-from card import CreatureCard, Special
+from card import CreatureCard, Special, magic_damage
 from buff import Buff
 from trigger import InfectTrigger, MirrorTrigger, CurseTrigger
 
@@ -37,18 +38,18 @@ class Effect:
    def get_targets(self, game):
       return game.get_opponent().get_spell_targets()
 
-   # En effekt har inget eget tillstånd (styrkan kommer från spellen), så när AI:n
+   # En effekt ändras aldrig under matchen (talen sätts när kortet skapas), så när AI:n
    # kopierar spelet för att prova ett drag kan kopian dela samma effekt-objekt.
    # Det gör kopieringen mycket snabbare.
    def __deepcopy__(self, memo):
       return self
 
 
-# Skadar en fiende med spellens 🪄 magic.
-# Samma tre steg som Game.attack, men det är spellen som slår.
+# Gör amount magisk skada på en fiende (målets 🪄 magic tar emot, armor hjälper inte).
 # include_hero=False betyder att bara fiendens figurer får väljas, inte hjälten.
 class DamageOneEnemy(Effect):
-   def __init__(self, include_hero=True):
+   def __init__(self, amount, include_hero=True):
+      self.amount = amount
       self.include_hero = include_hero
 
    def get_targets(self, game):
@@ -57,15 +58,15 @@ class DamageOneEnemy(Effect):
       return game.get_opponent().get_army()
 
    def apply(self, game, spell, target):
-      damage = spell.damage_against(target)
-      target.take_damage(damage)
+      target.take_damage(magic_damage(self.amount, target))
       game.get_opponent().clear_dead_cards()
 
 
-# Skadar alla fiendens figurer (inte hjälten) med spellens 🪄 magic.
-# own_damage: så mycket skada varje eget kort tar (Pnakotic Manuscripts).
+# Gör amount magisk skada på alla fiendens figurer (inte hjälten).
+# own_damage: så mycket skada varje eget kort tar (används inte av något kort just nu).
 class DamageAllEnemyCards(Effect):
-   def __init__(self, own_damage=0):
+   def __init__(self, amount, own_damage=0):
+      self.amount = amount
       self.own_damage = own_damage
 
    def needs_target(self):
@@ -75,7 +76,7 @@ class DamageAllEnemyCards(Effect):
       opponent = game.get_opponent()
       caster = game.get_current_player()
       for card in opponent.get_army():
-         card.take_damage(spell.damage_against(card))
+         card.take_damage(magic_damage(self.amount, card))
       if self.own_damage > 0:
          for card in caster.get_army():
             card.take_damage(self.own_damage)
@@ -83,32 +84,41 @@ class DamageAllEnemyCards(Effect):
       caster.clear_dead_cards()
 
 
-# Läker den egna hjälten med spellens 🪄 magic (Drain Life, som i Hearthstone).
+# Läker den egna hjälten med amount (Drain Life, som i Hearthstone).
 class HealOwnHero(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
    def needs_target(self):
       return False
 
    def apply(self, game, spell, target):
-      game.get_current_player().get_hero().restore_health(spell.get_magic())
+      game.get_current_player().get_hero().restore_health(self.amount)
 
 
-# Läker alla egna kort med spellens 🪄 magic.
+# Läker alla egna kort med amount.
 class HealAllOwnCards(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
    def needs_target(self):
       return False
 
    def apply(self, game, spell, target):
       for card in game.get_current_player().get_army():
-         card.restore_health(spell.get_magic())
+         card.restore_health(self.amount)
 
 
-# Sänker en fientlig figurs ⚔️ attack med spellens 🪄 magic, för alltid.
+# Sänker en fientlig figurs ⚔️ attack med amount, för alltid.
 class LowerAttack(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
    def get_targets(self, game):
       return game.get_opponent().get_army()
 
    def apply(self, game, spell, target):
-      target.lower_attack(spell.get_magic())
+      target.lower_attack(self.amount)
 
 
 # Tar bort all 🛡️ armor från en fientlig figur.
@@ -120,10 +130,10 @@ class RemoveArmor(Effect):
       target.set_armor(0)
 
 
-# Ger ett eget kort mer av en eller flera stats, lika mycket som spellens 🪄 magic.
+# Ger ett eget kort mer av en eller flera stats, för alltid. BuffOwnCard(armor=2) ger +2 armor.
 # ritual_only=True betyder att bara egna ritualkort får väljas.
 class BuffOwnCard(Effect):
-   def __init__(self, armor=False, magic=False, health=False, ritual_only=False):
+   def __init__(self, armor=0, magic=0, health=0, ritual_only=False):
       self.armor = armor
       self.magic = magic
       self.health = health
@@ -136,27 +146,31 @@ class BuffOwnCard(Effect):
       return caster.get_army()
 
    def apply(self, game, spell, target):
-      amount = spell.get_magic()
       if self.armor:
-         target.repair_armor(amount)
+         target.repair_armor(self.armor)
       if self.magic:
-         target.increase_magic(amount)
+         target.increase_magic(self.magic)
       if self.health:
-         target.increase_health(amount)
+         target.increase_health(self.health)
 
 
-# Sänker motståndarens ritual med spellens 🪄 magic.
+# Sänker motståndarens ritual med amount.
 class LowerRitual(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
    def needs_target(self):
       return False
 
    def apply(self, game, spell, target):
-      game.get_opponent().get_hero().lose_ritual(spell.get_magic())
+      game.get_opponent().get_hero().lose_ritual(self.amount)
 
 
-# Stjäl ritual från motståndaren, lika mycket som spellens 🪄 magic.
-# Man kan inte stjäla mer än motståndaren har.
+# Stjäl amount ritual från motståndaren. Man kan inte stjäla mer än motståndaren har.
 class StealRitual(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
    def needs_target(self):
       return False
 
@@ -164,18 +178,21 @@ class StealRitual(Effect):
       opponent_hero = game.get_opponent().get_hero()
       if opponent_hero.is_ritual_protected():
          return   # Seal of Apep: inget kan stjälas
-      stolen = min(spell.get_magic(), opponent_hero.get_ritual())
+      stolen = min(self.amount, opponent_hero.get_ritual())
       opponent_hero.lose_ritual(stolen)
       game.get_current_player().get_hero().add_ritual(stolen)
 
 
-# Lägger spellens ☩ ritual till den egna ritualen (Scroll of Rituals).
+# Lägger amount till den egna ritualen (Scroll of Rituals).
 class GainRitual(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
    def needs_target(self):
       return False
 
    def apply(self, game, spell, target):
-      game.get_current_player().get_hero().add_ritual(spell.get_ritual())
+      game.get_current_player().get_hero().add_ritual(self.amount)
 
 
 # Den som spelar drar kort.
@@ -305,8 +322,8 @@ class DamageAllOwnCards(Effect):
 # Fäster en buff (en tillfällig ändring) på ett eller flera mål.
 # Buffen tillhör den som spelar spellen och går ut i början av hens nästa tur,
 # eller i slutet av den här turen om this_turn_only är True.
-# Stat-ändringar räknas i spellens 🪄 magic: attack=-1 betyder "−🪄 magic attack",
-# armor=1 betyder "+🪄 magic armor". Statusar (cannot_attack, guard ...) är True eller False.
+# Stat-ändringar är tal: attack=-2 betyder 2 mindre attack, armor=3 betyder 3 mer armor.
+# Statusar (cannot_attack, guard ...) är True eller False.
 class GiveBuff(Effect):
    # Vem som får buffen
    ENEMY_CARD = "enemy card"                       # ett valt fiendekort
@@ -358,12 +375,11 @@ class GiveBuff(Effect):
       return []
 
    def apply(self, game, spell, target):
-      amount = spell.get_magic()
       for receiver in self.receivers(game, target):
          buff = Buff(game.get_current_player(),
-                     attack=self.attack * amount,
-                     armor=self.armor * amount,
-                     magic=self.magic * amount,
+                     attack=self.attack,
+                     armor=self.armor,
+                     magic=self.magic,
                      cannot_attack=self.cannot_attack,
                      cannot_be_attacked=self.cannot_be_attacked,
                      guard=self.guard,
@@ -373,14 +389,17 @@ class GiveBuff(Effect):
          receiver.add_buff(buff)
 
 
-# Smittar ett fiendekort: det tar spellens 🪄 magic i skada i början av varje tur
+# Smittar ett fiendekort: det tar amount i skada i början av varje tur
 # för den som smittade det, tills det dör (Infect).
 class Infect(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
    def get_targets(self, game):
       return game.get_opponent().get_army()
 
    def apply(self, game, spell, target):
-      game.add_trigger(InfectTrigger(game.get_current_player(), target, spell.get_magic()))
+      game.add_trigger(InfectTrigger(game.get_current_player(), target, self.amount))
 
 
 # Nästa melee-anfall mot ett valt eget kort träffar anfallaren i stället (Mirror of Nitocris).

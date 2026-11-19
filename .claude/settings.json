@@ -5,7 +5,10 @@
       "Bash(python3 -m unittest)",
       "Bash(sed -i '' '34s/special=None/special=Special.SACRIFICE/; 56s/special=None/special=Special.SACRIFICE/' factions/academics.py && grep -n \"special=Special.SACRIFICE\" -B7 factions/academics.py | grep CreatureCard)",
       "Bash(sed -i '' -e 's/NECRONOMICON = \"Deals heavy magic damage to one enemy, but one of your cards takes 3 damage\"/NECRONOMICON = \"Deals heavy magic damage to one enemy\"/' -e 's/PNAKOTIC_MANUSCRIPTS = \"Deals magic damage to all enemy cards, but your own cards take 1 damage\"/PNAKOTIC_MANUSCRIPTS = \"Deals magic damage to all enemy cards\"/' -e 's/UNAUSSPRECHLICHEN_KULTEN = \"Steals ritual from the opponent, but one of your cards takes 2 damage\"/UNAUSSPRECHLICHEN_KULTEN = \"Steals ritual from the opponent, but your hero takes 2 damage\"/' -e 's/RLYEH_TEXT = \"Draw two cards, but one of your cards takes 2 damage\"/RLYEH_TEXT = \"Draw two cards\"/' -e 's/RITE_OF_THE_THIRTEENTH_HOUR = \"All your cards get extra attack this turn, but each of them takes 1 damage\"/RITE_OF_THE_THIRTEENTH_HOUR = \"All your cards get extra attack this turn\"/' -e 's/THE_KING_IN_YELLOW = \"No enemy card can attack next turn, but one of your cards takes 2 damage\"/THE_KING_IN_YELLOW = \"No enemy card can attack next turn\"/' card.py)",
-      "Bash(awk '{print $6,$7,$8, substr\\($0, index\\($0,$10\\)\\)}')"
+      "Bash(awk '{print $6,$7,$8, substr\\($0, index\\($0,$10\\)\\)}')",
+      "Bash(time python3 simulate.py 10 --seed 1)",
+      "Bash(grep -n \"SpellCard\\\\|spellens\\\\|Card\\(\\\\`\\\\|Spells \\(\\\\|både spellens\\\\|ritual\\\\`, \\\\`special\\\\|47 st\\\\|Plague och Scales\" CLAUDE.md)",
+      "Bash(python3 simulate.py 100 --seed 1)"
     ],
     "additionalDirectories": [
       "/Users/wrangman/Documents/DBGY/Prog2/Ritual/factions"

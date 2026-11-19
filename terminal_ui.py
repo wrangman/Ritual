@@ -16,13 +16,16 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 import time
 from card import SpellCard, RitualCard, FactionName
-from move import Attack, Sacrifice
+from move import Attack, MagicAttack, Sacrifice
 
 
 RESET = "\033[0m"   # tillbaka till terminalens vanliga färg
 DIM = "\033[2m"     # grå, svag text: för kort som inte går att använda just nu
 
 LETTERS = "abcdefghijklmnopqrstuvwxyz"   # korten i armén väljs med bokstäver
+
+# Vad varje sorts drag med ett kort på brädet heter när spelaren ska välja, i den ordning de visas
+ARMY_MOVE_KINDS = [(Attack, "attack"), (MagicAttack, "magic attack"), (Sacrifice, "sacrifice")]
 
 RESOURCE_NAME = "Resource"   # vad resursen heter i spelet (namnet är inte bestämt än)
 
@@ -32,6 +35,11 @@ MESSAGE_DELAY = 0.7   # sekunder efter varje meddelande, så att man hinner se d
 # Ger en ANSI-kod som färgar texten efter den, med exakt den här färgen (röd, grön, blå 0–255)
 def rgb(red, green, blue):
    return f"\033[38;2;{red};{green};{blue}m"
+
+
+# Ljusgrå för kortens beskrivning (↳ ...). Ljusare än DIM, så att texten går att läsa,
+# men fortfarande svagare än kortet själv. DIM betyder "går inte att använda nu".
+TEXT_COLOR = rgb(190, 190, 190)
 
 
 # Fraktion -> (färg för figurer, färg för spells)
@@ -91,7 +99,7 @@ class TerminalUI:
       special = card.get_special()
       if special is None:
          return ""
-      return f"\n      {DIM}↳ {special.value}{RESET}"
+      return f"\n      {TEXT_COLOR}↳ {special.value}{RESET}"
 
    # Visar spelarens armé, ett kort per rad. Med moves (den egna armén) får korten
    # bokstäver, och kort som inte kan anfalla nu visas i grått med skälet efter.
@@ -102,9 +110,9 @@ class TerminalUI:
          if moves is None:
             lines.append(f"   {self.colored(card)}")
          elif self.moves_for(card, moves):
-            can_do = "can attack"
-            if any(isinstance(move, Sacrifice) for move in self.moves_for(card, moves)):
-               can_do = "can attack or sacrifice itself"
+            # Till exempel "can attack, magic attack or sacrifice"
+            kinds = [kind for kind, _ in self.group_by_kind(self.moves_for(card, moves))]
+            can_do = "can " + self.or_list(kinds)
             lines.append(f"{LETTERS[index]}. {self.colored(card)}  – {can_do}")
          else:
             reason = self.why_cannot_attack(card)
@@ -263,20 +271,34 @@ class TerminalUI:
          if move.ends_turn():
             return move
 
-   # Kortet kan göra ett eller flera drag. Kan det både anfalla och offra sig (SACRIFICE)
-   # frågas först vilket, så att fiender och egna kort inte blandas i samma lista.
+   # Delar upp kortets drag efter sort: [("attack", [...]), ("magic attack", [...]), ...].
+   # Bara sorter som kortet faktiskt kan göra kommer med.
+   def group_by_kind(self, card_moves):
+      groups = []
+      for move_class, kind in ARMY_MOVE_KINDS:
+         found = [move for move in card_moves if isinstance(move, move_class)]
+         if found:
+            groups.append((kind, found))
+      return groups
+
+   # ["attack", "magic attack", "sacrifice"] -> "attack, magic attack or sacrifice"
+   def or_list(self, words):
+      if len(words) == 1:
+         return words[0]
+      return ", ".join(words[:-1]) + " or " + words[-1]
+
+   # Kortet kan göra ett eller flera drag. Kan det göra flera sorter (anfalla, anfalla med magi,
+   # offra sig) frågas först vilken, så att fiender och egna kort inte blandas i samma lista.
    # Har dragen olika mål får spelaren sedan välja mål.
    def choose_move_for_card(self, card_moves):
-      attacks = [move for move in card_moves if isinstance(move, Attack)]
-      sacrifices = [move for move in card_moves if isinstance(move, Sacrifice)]
-      if attacks and sacrifices:
+      groups = self.group_by_kind(card_moves)
+      if len(groups) > 1:
+         choices = [f"{number}) {kind}" for number, (kind, _) in enumerate(groups, start=1)]
+         question = self.or_list(choices) + "? "
          while True:
-            answer = input("1) attack or 2) sacrifice? ").strip()
-            if answer == "1":
-               card_moves = attacks
-               break
-            if answer == "2":
-               card_moves = sacrifices
+            answer = input(question).strip()
+            if answer.isdigit() and 1 <= int(answer) <= len(groups):
+               card_moves = groups[int(answer) - 1][1]
                break
             print("Not a valid choice.")
 

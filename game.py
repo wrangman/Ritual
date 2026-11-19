@@ -9,7 +9,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 import copy
 from card import SpellCard, Special
-from move import PlayCard, Attack, Sacrifice, EndTurn
+from move import PlayCard, Attack, MagicAttack, Sacrifice, EndTurn
 from silent_ui import SilentUI
 from snapshot import Snapshot
 from effect import creature_ability
@@ -177,10 +177,14 @@ class Game:
                moves.append(PlayCard(card))
 
       targets = self.get_opponent_of(player).get_targets()
+      # Ett kort med 🪄 magic kan också anfalla med magi, mot samma mål som ett vanligt anfall.
       for card in player.get_army():
          if card.can_attack():
             for target in targets:
                moves.append(Attack(card, target))
+         if card.can_magic_attack():
+            for target in targets:
+               moves.append(MagicAttack(card, target))
 
       # SACRIFICE: i stället för att anfalla kan kortet offra sig för ett annat eget kort.
       # Samma regler som för anfall: kortet måste ha legat sedan förra turen.
@@ -207,14 +211,14 @@ class Game:
             ability.apply(self, card, target)
 
 
-   # SACRIFICE: kortet dör och ger sin ❤️ health och 🛡️ armor till target för alltid.
+   # SACRIFICE: kortet offrar sig och ger sin ❤️ max health och 🛡️ armor till target för alltid.
    # Kortet dör som vanligt (kill_card), så dess ☩ försvinner från ritualen.
+   # kill_card anropas direkt, inte via clear_dead_cards, så att styrkan bara ges en gång:
+   # här väljer spelaren target, i clear_dead_cards (när kortet dör på annat sätt) slumpas det.
    def sacrifice(self, card, target):
-      target.increase_health(card.get_health())
-      target.repair_armor(card.get_armor())
-      card.mark_attacked()
-      card.set_health(0)
-      self.clear_dead_cards()
+      player = self.current_player
+      player.kill_card(card)
+      player.pass_on_strength(card, target)
 
 
    # En kopia av hela spelet som AI:n kan prova ett drag på, utan att det riktiga spelet ändras.
@@ -238,17 +242,33 @@ class Game:
             break
 
       if not handled:
-         # Båda gör skada på varandra samtidigt (som i Hearthstone): båda värdena räknas ut
-         # innan någon tar skada, så målet slår tillbaka även om det dör.
+         # Båda värdena räknas ut innan någon tar skada, så målet slår tillbaka även om det dör.
          damage = attacker.damage_against(target)
          counter_damage = target.counter_damage_against(attacker)
-         target.take_damage(damage)
-         attacker.take_damage(counter_damage)
-         for trigger in list(self.triggers):
-            trigger.after_attack(self, attacker, target, damage)
+         self.exchange_damage(attacker, target, damage, counter_damage)
 
       self.clear_dead_cards()
       self.remove_used_triggers()
+
+   # En figur anfaller med magi: 🪄 mot 🪄, armor hjälper inte. Målet slår tillbaka med magi.
+   # Mirror of Nitocris gäller bara melee, så before_attack frågas inte. Curse of Choronzon
+   # gäller alla anfall mot ritualkort, så after_attack frågas som vanligt (i exchange_damage).
+   def magic_attack(self, attacker, target):
+      attacker.mark_attacked()
+      damage = attacker.magic_damage_against(target)
+      counter_damage = target.magic_counter_damage_against(attacker)
+      self.exchange_damage(attacker, target, damage, counter_damage)
+      self.clear_dead_cards()
+      self.remove_used_triggers()
+
+   # Anfallaren och målet gör skada på varandra samtidigt (som i Hearthstone),
+   # sedan får triggers reagera på anfallet (Curse of Choronzon).
+   # Samma för melee och magi; bara hur skadan räknas skiljer sig.
+   def exchange_damage(self, attacker, target, damage, counter_damage):
+      target.take_damage(damage)
+      attacker.take_damage(counter_damage)
+      for trigger in list(self.triggers):
+         trigger.after_attack(self, attacker, target, damage)
 
 
    # Triggers (Observer-mönstret): effekter som väntar på att något ska hända

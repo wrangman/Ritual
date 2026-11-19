@@ -103,6 +103,10 @@ class Hero:
    def counter_damage_against(self, attacker):
       return 0
 
+   # Hjälten slår inte heller tillbaka mot ett magiskt anfall
+   def magic_counter_damage_against(self, attacker):
+      return 0
+
    def is_immune_to_melee(self):
       return self.buffs.no_melee_damage()
 

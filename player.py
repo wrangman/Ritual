@@ -9,8 +9,9 @@ __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
+import random
 from hero import Hero
-from card import SpellCard, RitualCard
+from card import SpellCard, RitualCard, Special
 from deck import Deck
 
 
@@ -221,10 +222,27 @@ class Player:
          total += card.get_ritual()
       self.hero.add_ritual(total)
 
+   # Döda kort tas bort. Sedan sker det som händer när ett kort dör (som Deathrattle i Hearthstone):
+   # ett SACRIFICE-kort ger sin styrka till ett slumpat eget kort, oavsett hur det dog.
+   # Det sker först när alla döda kort är borta, så att styrkan inte hamnar på ett kort
+   # som dog samtidigt (till exempel av Plague). Slumpat, eftersom kortet kan dö under
+   # motståndarens tur, och Deathrattle i Hearthstone frågar aldrig efter ett mål.
    def clear_dead_cards(self):
+      dead_cards = []
       for card in self.get_army():
-         if card.is_dead(): 
+         if card.is_dead():
             self.kill_card(card)
+            dead_cards.append(card)
+      for card in dead_cards:
+         if card.get_special() == Special.SACRIFICE and self.army:
+            self.pass_on_strength(card, random.choice(self.army))
+
+   # SACRIFICE: det döda kortet ger sin ❤️ max health och sin 🛡️ armor till receiver för alltid.
+   # Kortet är redan dött, så buffarna är borta: det ger sina egna värden, inga tillfälliga.
+   # Samma regel när kortet offras frivilligt (Game.sacrifice), då väljer spelaren receiver.
+   def pass_on_strength(self, card, receiver):
+      receiver.increase_health(card.get_max_health())
+      receiver.repair_armor(card.get_armor())
 
    def get_spell_targets(self):
       return self.get_army() + [self.get_hero()]

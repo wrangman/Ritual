@@ -13,7 +13,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from buff import Buff
-from move import PlayCard, Attack
+from move import PlayCard, Attack, MagicAttack
 from player import Player
 from terminal_ui import TerminalUI
 from tests.helpers import new_game, take_from_deck, take_creatures, put_ready_on_board
@@ -113,6 +113,19 @@ class TestTerminalChoosesAmongLegalMoves(unittest.TestCase):
       move = self.choose(["a", "2"])
       self.assertIsInstance(move, Attack)
       self.assertIs(move.get_target(), second)
+
+   def test_choose_magic_attack_then_target(self):
+      self.game.current_player = self.academics
+      keziah = take_from_deck(self.academics, "Keziah Mason")   # har 🪄, kan anfalla på två sätt
+      put_ready_on_board(self.academics, keziah)
+      first, second = take_creatures(self.ghouls, 2)
+      put_ready_on_board(self.ghouls, first)
+      put_ready_on_board(self.ghouls, second)
+      moves = self.game.get_legal_moves(self.academics)
+      with patch("builtins.input", side_effect=["a", "2", "1"]), redirect_stdout(io.StringIO()):
+         move = self.ui.choose_move(self.game, self.academics, moves)   # a, magic attack, mål 1
+      self.assertIsInstance(move, MagicAttack)
+      self.assertIs(move.get_target(), first)
 
    def test_invalid_answers_are_asked_again(self):
       self.ghouls.hand = [take_from_deck(self.ghouls, "Elder Ghoul")]   # kostar 3

@@ -1,0 +1,28 @@
+TODO: gör så man kan välja spelare och datorn får den andra. eller kanske tom random ?
+
+--- Kvar efter 2026-11-19 ---
+
+BALANS
+- Ritualtakten är för snabb. Ghouls bygger ca 10 ☩ per tur (t.ex. Forbidden Painting 5 + Choir 4 + Charnel Priest 1),
+  och Academics har inget som hinner stoppa det. Förslag att titta på: högre ritualmål, mindre ☩ på ritualkorten,
+  mer ❤️ på dem eller fler sätt att sänka ritual.
+- Den som börjar vinner 75 % (var 60 % innan magiskt anfall). Förslag: den som börjar andra får något extra,
+  som myntet i Hearthstone (extra kort eller +1 resurs en gång).
+
+AI (ai.py)
+- AI:n räknar bara motståndarens ⚔️ när den bedömer hotet mot sin hjälte ("exposed_hero"), inte 🪄 (magiska anfall).
+- AI:n räknar inte med att SACRIFICE-kort ger sin styrka när de dör, så den är lite för rädd att förlora dem.
+
+IDÉER SOM VÄNTAR
+- Spells som ger ritual (t.ex. Psalms of the Void, The King in Yellow). Vänta tills balansen ovan är fixad.
+  Byggs i så fall med Combined(..., GainRitual(n)) och talet skrivs i kortets text.
+
+KÖR SIMULERING EFTER VARJE BALANSÄNDRING
+- python3 simulate.py 200 --seed 1   (senast: Academics 53 %, Ghouls 47 %)
+
+GJORT 2026-11-19 (inte committat än)
+- Magiskt anfall för figurer med 🪄 (🪄 mot 🪄, armor hjälper inte, målet slår tillbaka med magi).
+- Spells har inga stats längre, som i Hearthstone: talet står i effekten och i texten.
+- SACRIFICE ger sin styrka även när kortet dör på annat sätt (till ett slumpat eget kort).
+- Korttexten (↳) visas i ljusgrått.
+- Necronomicon och The King in Yellow kostar 4.

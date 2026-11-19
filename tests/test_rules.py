@@ -8,7 +8,8 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 import unittest
 from buff import Buff
-from move import Sacrifice
+from move import Sacrifice, MagicAttack
+from trigger import CurseTrigger, MirrorTrigger
 from tests.helpers import (new_game, take_from_deck, take_ritual_card, take_creatures,
                            put_ready_on_board)
 
@@ -177,6 +178,118 @@ class TestRetaliation(unittest.TestCase):
       self.assertEqual(crusher.get_health(), 4)
 
 
+class TestMagicAttack(unittest.TestCase):
+   def setUp(self):
+      self.game, self.academics, self.ghouls = new_game()
+      self.game.current_player = self.academics
+
+   def magic_moves(self, card):
+      return [m for m in self.game.get_legal_moves(self.academics)
+              if isinstance(m, MagicAttack) and m.get_card() is card]
+
+   def test_armor_does_not_help_and_card_without_magic_cannot_hit_back(self):
+      # Keziah Mason 🪄5 ❤️4 mot Elder Ghoul 🪄0 🛡️5 ❤️6
+      keziah = take_from_deck(self.academics, "Keziah Mason")
+      elder = take_from_deck(self.ghouls, "Elder Ghoul")
+      self.game.magic_attack(keziah, elder)
+      self.assertEqual(elder.get_health(), 6 - 5)   # 5 - 0 skada, armor räknas inte
+      self.assertEqual(keziah.get_health(), 4)      # 0 - 5 = 0 i motskada
+
+   def test_target_hits_back_with_magic(self):
+      # Night Archivist 🪄3 ❤️3 mot Herbert West 🪄4 ❤️5
+      archivist = take_from_deck(self.academics, "Night Archivist")
+      west = take_from_deck(self.academics, "Herbert West")
+      self.game.magic_attack(archivist, west)
+      self.assertEqual(west.get_health(), 5)        # 3 - 4 = 0 skada
+      self.assertEqual(archivist.get_health(), 2)   # 4 - 3 = 1 i motskada
+
+   def test_ritual_card_does_not_hit_back(self):
+      # Academics ritualkort har hög 🪄, men ritualkort slåss aldrig
+      priest = take_from_deck(self.ghouls, "Charnel Priest")   # 🪄1 ❤️2
+      self.game.magic_attack(priest, take_ritual_card(self.academics))
+      self.assertEqual(priest.get_health(), 2)
+
+   def test_uses_the_attack_for_this_turn(self):
+      keziah = take_from_deck(self.academics, "Keziah Mason")
+      put_ready_on_board(self.academics, keziah)
+      self.game.magic_attack(keziah, self.ghouls.get_hero())
+      self.assertFalse(keziah.can_attack())
+      self.assertEqual(self.magic_moves(keziah), [])
+
+   def test_only_cards_with_magic_that_are_ready(self):
+      keziah = take_from_deck(self.academics, "Keziah Mason")
+      geologist = take_from_deck(self.academics, "Expedition Geologist")   # 🪄1
+      put_ready_on_board(self.academics, keziah)
+      put_ready_on_board(self.academics, geologist)
+      geologist.enter_board()   # som om den lades den här turen
+      self.assertEqual(len(self.magic_moves(keziah)), 1)   # bara hjälten, brädet är tomt
+      self.assertEqual(self.magic_moves(geologist), [])
+      keeper = take_from_deck(self.ghouls, "Ossuary Keeper")   # 🪄0
+      self.assertFalse(keeper.can_magic_attack())
+
+   def test_guard_must_be_attacked_first(self):
+      keziah = take_from_deck(self.academics, "Keziah Mason")
+      put_ready_on_board(self.academics, keziah)
+      defender, other = take_creatures(self.ghouls, 2)
+      put_ready_on_board(self.ghouls, defender)
+      put_ready_on_board(self.ghouls, other)
+      defender.add_buff(Buff(self.ghouls, guard=True))
+      targets = [m.get_target() for m in self.magic_moves(keziah)]
+      self.assertEqual(targets, [defender])
+
+   def test_curse_of_choronzon_hits_a_magic_attacker(self):
+      # Kortets text säger "attacks", så det gäller magiska anfall också
+      keziah = take_from_deck(self.academics, "Keziah Mason")   # 🪄5 ❤️4
+      ritual_card = take_ritual_card(self.ghouls)
+      put_ready_on_board(self.ghouls, ritual_card)
+      self.game.add_trigger(CurseTrigger(self.ghouls))
+      self.game.magic_attack(keziah, ritual_card)
+      self.assertTrue(keziah.is_dead())   # tar samma 5 skada som den gjorde (❤️ 4)
+
+   def test_mirror_of_nitocris_only_stops_melee(self):
+      keziah = take_from_deck(self.academics, "Keziah Mason")
+      target = take_from_deck(self.ghouls, "Elder Ghoul")
+      put_ready_on_board(self.ghouls, target)
+      self.game.add_trigger(MirrorTrigger(self.ghouls, target))
+      self.game.magic_attack(keziah, target)
+      self.assertEqual(target.get_health(), 6 - 5)
+      self.assertEqual(keziah.get_health(), 4)
+
+
+class TestSpells(unittest.TestCase):
+   def setUp(self):
+      self.game, self.academics, self.ghouls = new_game()
+      self.game.current_player = self.academics
+      self.academics.resource = 10
+
+   # Lägger spellen från handen, som när spelaren väljer den
+   def cast(self, name, target=None):
+      spell = take_from_deck(self.academics, name)
+      self.academics.hand.append(spell)
+      self.game.play_card(spell, target)
+      return spell
+
+   def test_spell_shows_no_stats(self):
+      spell = take_from_deck(self.academics, "Necronomicon")
+      self.assertEqual(spell.short(), "Necronomicon (Spell)")
+
+   def test_magic_damage_is_lowered_by_the_targets_magic(self):
+      west = take_from_deck(self.academics, "Herbert West")   # 🪄4 ❤️5, som mål
+      put_ready_on_board(self.ghouls, west)
+      self.cast("Necronomicon", west)                          # 7 magisk skada
+      self.assertEqual(west.get_health(), 5 - (7 - 4))
+
+   def test_armor_does_not_help_against_spells(self):
+      elder = take_from_deck(self.ghouls, "Elder Ghoul")      # 🪄0 🛡️5 ❤️6
+      put_ready_on_board(self.ghouls, elder)
+      self.cast("Book of Sorrows", elder)                     # 3 magisk skada
+      self.assertEqual(elder.get_health(), 6 - 3)
+
+   def test_scroll_of_rituals_adds_two(self):
+      self.cast("Scroll of Rituals")
+      self.assertEqual(self.academics.get_hero().get_ritual(), 2)
+
+
 class TestCreatureAbilities(unittest.TestCase):
    def setUp(self):
       self.game, self.academics, self.ghouls = new_game()
@@ -250,6 +363,36 @@ class TestSacrifice(unittest.TestCase):
    def test_new_card_cannot_sacrifice(self):
       self.student.enter_board()   # som om den lades den här turen
       self.assertEqual(self.sacrifice_moves(), [])
+
+   def test_damaged_card_still_gives_its_max_health(self):
+      self.student.set_health(1)
+      health = self.ritual_card.get_health()
+      self.game.sacrifice(self.student, self.ritual_card)
+      self.assertEqual(self.ritual_card.get_health(), health + 2)
+
+   def test_killed_in_an_attack_still_gives_its_strength(self):
+      # Ossuary Keeper ⚔️4 dödar studenten (🛡️1, ❤️2). Ritualkortet är det enda kortet kvar.
+      health, armor = self.ritual_card.get_health(), self.ritual_card.get_armor()
+      keeper = take_from_deck(self.ghouls, "Ossuary Keeper")
+      self.game.attack(keeper, self.student)
+      self.assertNotIn(self.student, self.academics.get_army())
+      self.assertEqual(self.ritual_card.get_health(), health + 2)
+      self.assertEqual(self.ritual_card.get_armor(), armor + 1)
+
+   def test_strength_never_goes_to_a_card_that_died_at_the_same_time(self):
+      other_student = take_from_deck(self.academics, "Miskatonic Student")
+      put_ready_on_board(self.academics, other_student)
+      health = self.ritual_card.get_health()
+      self.student.set_health(0)
+      other_student.set_health(0)          # båda dör samtidigt, som av Plague
+      self.academics.clear_dead_cards()
+      self.assertEqual(self.ritual_card.get_health(), health + 2 + 2)
+
+   def test_dying_with_no_other_card_does_nothing(self):
+      self.academics.kill_card(self.ritual_card)
+      self.student.set_health(0)
+      self.academics.clear_dead_cards()   # ingen att ge till, och ingen krasch
+      self.assertEqual(self.academics.get_army(), [])
 
 
 if __name__ == "__main__":

@@ -42,23 +42,24 @@ class Special(Enum):
    DEVOUR = "When played: eats a dead creature in your graveyard and gains its attack and health"
 
    # Academics, figurer
-   SACRIFICE = "Instead of attacking: dies and gives its health and armor to another of your cards"
+   SACRIFICE = ("When it dies, a random card of yours gets its health and armor. "
+                "Instead of attacking, it can sacrifice itself and you choose the card")
 
    # Ghouls, spells
    RESURRECT = "Returns a random dead creature from your graveyard to the board"
-   PLAGUE = "Deals magic damage to all enemy cards on the board"
-   INFECT = "Infects an enemy card, which loses health every turn"
-   RUIN = "Lowers the opponent's ritual"
-   NECROTIC_BOLT = "Deals magic damage to one enemy"
-   DRAIN_LIFE = "Deals magic damage to an enemy card and heals your hero"
-   WITHER = "Lowers an enemy card's attack"
+   PLAGUE = "Deals 2 magic damage to all enemy cards on the board"
+   INFECT = "Infects an enemy card: it loses 2 health at the start of each of your turns"
+   RUIN = "Lowers the opponent's ritual by 3"
+   NECROTIC_BOLT = "Deals 3 magic damage to one enemy"
+   DRAIN_LIFE = "Deals 2 magic damage to an enemy card and restores 2 health to your hero"
+   WITHER = "An enemy card loses 3 attack for good"
    TERROR = "An enemy card cannot attack next turn"
-   BONE_WARD = "Gives one of your cards extra armor"
-   SOUL_SIPHON = "Steals ritual points from the opponent"
+   BONE_WARD = "One of your cards gets +2 armor"
+   SOUL_SIPHON = "Steals 3 ritual from the opponent"
 
    # Ghouls, spells som skyddar ritual
    VEIL_OF_TIAMAT = "One of your ritual cards cannot be attacked until your next turn"
-   SCALES_OF_LEVIATHAN = "Gives one of your ritual cards extra armor and magic"
+   SCALES_OF_LEVIATHAN = "One of your ritual cards gets +2 armor and +2 magic"
    SEAL_OF_APEP = "Your ritual cannot be lowered or stolen until your next turn"
    KISS_OF_LILITH = "Gives one of your cards Guard until your next turn"
    CURSE_OF_CHORONZON = "The next enemy card that attacks one of your ritual cards takes the same damage"
@@ -67,40 +68,46 @@ class Special(Enum):
 
    # Academics, spells (förbjudna böcker). Tung magi kostar inte längre de egna korten något.
    # Bara att stjäla ritual (Unaussprechlichen Kulten) och De Vermis Mysteriis skadar den egna hjälten.
-   BOOK_OF_SORROWS = "Strikes one enemy with magic damage"
-   SCROLL_OF_RITUALS ="Adds this spell's ritual to yours"
+   BOOK_OF_SORROWS = "Deals 3 magic damage to one enemy"
+   SCROLL_OF_RITUALS = "Adds 2 to your ritual"
    DE_VERMIS_MYSTERIIS = "Gain 2 resource now, but your hero takes 1 damage"
    THE_SILVER_KEY = "Gain 2 resource now. Overload (2): you get 2 less next turn"
    FORBIDDEN_CODEX ="Look at three cards from your deck and put one of them in your hand"
-   WHISPERED_HEX = "An enemy card loses attack until your next turn"
-   NECRONOMICON = "Deals heavy magic damage to one enemy"
-   PNAKOTIC_MANUSCRIPTS = "Deals magic damage to all enemy cards"
-   CULTES_DES_GOULES = "Removes armor from an enemy card"
-   UNAUSSPRECHLICHEN_KULTEN = "Steals ritual from the opponent, but your hero takes 1 damage"
-   BOOK_OF_EIBON = "Burns away part of the opponent's ritual"
+   WHISPERED_HEX = "An enemy card has 2 less attack until your next turn"
+   NECRONOMICON = "Deals 7 magic damage to one enemy"
+   PNAKOTIC_MANUSCRIPTS = "Deals 3 magic damage to all enemy cards"
+   CULTES_DES_GOULES = "Removes all armor from an enemy card"
+   UNAUSSPRECHLICHEN_KULTEN = "Steals 3 ritual from the opponent, but your hero takes 1 damage"
+   BOOK_OF_EIBON = "Burns away 3 of the opponent's ritual"
    RLYEH_TEXT = "Draw two cards"
-   SCROLL_OF_DZYAN ="All your cards get extra magic until your next turn"
-   RITE_OF_THE_THIRTEENTH_HOUR = "All your cards get extra attack this turn"
-   PSALMS_OF_THE_VOID = "Heals all your cards"
+   SCROLL_OF_DZYAN = "All your cards get +2 magic until your next turn"
+   RITE_OF_THE_THIRTEENTH_HOUR = "All your cards get +2 attack this turn"
+   PSALMS_OF_THE_VOID = "Restores 2 health to all your cards"
    THE_KING_IN_YELLOW = "No enemy card can attack next turn"
    BOOK_OF_THE_NAMELESS_DEAD = "Returns a random card from your graveyard to your hand"
 
    # Academics, spells som skyddar ritual
    SEAL_OF_THE_BLACK_SUN = "Your ritual cards take no melee damage until your next turn"
    MIRROR_OF_NITOCRIS = "The next melee attack on one of your cards hits the attacker instead"
-   WARD_OF_THE_UNBEGOTTEN = "One of your cards gets Guard and extra armor until your next turn"
-   CODEX_OF_THE_ELEVEN_KEYS = "One of your ritual cards gets extra magic and health"
+   WARD_OF_THE_UNBEGOTTEN = "One of your cards gets Guard and +3 armor until your next turn"
+   CODEX_OF_THE_ELEVEN_KEYS = "One of your ritual cards gets +3 magic and +3 health"
+
+
+# Magisk skada, för både spells och figurers magiska anfall: styrkan minus målets 🪄 magic,
+# minst 0. Armor hjälper inte mot magi. Formeln står bara här, så den är lika överallt.
+def magic_damage(strength, target):
+   return max(0, strength - target.get_magic())
 
 
 # Grundklass för alla kort. Innehåller bara det som ALLA kort har.
 # Skapa inte Card direkt, använd CreatureCard eller SpellCard.
+# ☩ ritual finns inte här: bara kort som ligger på brädet ger ritual (se CreatureCard).
 class Card:
-   def __init__(self, faction=None, name="Untitled", ritual=0, special=None, rarity=Rarity.COMMON, cost=0):
+   def __init__(self, faction=None, name="Untitled", special=None, rarity=Rarity.COMMON, cost=0):
 
       # instansvariabler
       self.faction = faction
       self.name = name
-      self.ritual = ritual
       self.special = special
       self.rarity = rarity
       self.cost = cost   # vad kortet kostar att lägga
@@ -117,9 +124,6 @@ class Card:
 
    def get_name(self):
       return self.name
-
-   def get_ritual(self):
-      return self.ritual
 
    def get_special(self):
       return self.special
@@ -139,9 +143,6 @@ class Card:
    def set_name(self, name):
       self.name = name
 
-   def set_ritual(self, ritual):
-      self.ritual = ritual
-
    def set_special(self, special):
       self.special = special
 
@@ -156,12 +157,13 @@ class Card:
 # Figurer slåss alltid med ⚔️ attack, och målets 🛡️ armor tar emot.
 class CreatureCard(Card):
    def __init__(self, faction=None, name="Untitled", attack_name=None, attack=0, armor=0, magic=0, health=0, ritual=0, special=None, rarity=Rarity.COMMON, cost=0):
-      super().__init__(faction, name, ritual, special, rarity, cost)
+      super().__init__(faction, name, special, rarity, cost)
       self.attack_name = attack_name
       self.attack = attack
       self.armor = armor
       self.magic = magic
       self.health = health
+      self.ritual = ritual       # ☩ som hjälten får i början av varje egen tur, så länge kortet ligger kvar
       self.max_health = health   # läkning kan aldrig ge mer än så här (som i Hearthstone)
       self.buffs = BuffList()    # tillfälliga ändringar, till exempel från Terror eller Whispered Hex
       self.ready = False              # har legat på brädet sedan förra turen (summoning sickness)
@@ -306,6 +308,21 @@ class CreatureCard(Card):
    def counter_damage_against(self, attacker):
       return self.damage_against(attacker)
 
+   # Magiskt anfall: en figur med 🪄 magic kan anfalla med magi i stället för med ⚔️.
+   # Det är samma anfall för turen, med samma regler för väntetur, Guard och mål.
+   def can_magic_attack(self):
+      return self.can_attack() and self.get_magic() > 0
+
+   # Magisk skada räknas som för spells, med figurens 🪄 magic som styrka.
+   # Skydd mot melee (Seal of the Black Sun) gäller inte.
+   def magic_damage_against(self, target):
+      return magic_damage(self.get_magic(), target)
+
+   # Målet slår tillbaka på samma sätt som det blev träffat: med magi.
+   # Ett kort utan 🪄 kan alltså inte slå tillbaka mot ett magiskt anfall.
+   def magic_counter_damage_against(self, attacker):
+      return self.magic_damage_against(attacker)
+
 
    # Get methods
 
@@ -328,6 +345,9 @@ class CreatureCard(Card):
    def get_max_health(self):
       return self.max_health
 
+   def get_ritual(self):
+      return self.ritual
+
 
    # Set methods
 
@@ -345,6 +365,9 @@ class CreatureCard(Card):
 
    def set_health(self, health):
       self.health = health
+
+   def set_ritual(self, ritual):
+      self.ritual = ritual
 
 
 # Ett ritualkort ligger på brädet och bygger ritual, men kan aldrig anfalla.
@@ -378,48 +401,33 @@ class RitualCard(CreatureCard):
    def can_attack(self):
       return False
 
+   # Ritualkort slåss inte. Mot melee slår de inte tillbaka eftersom de har ⚔️ 0,
+   # men många har hög 🪄 magic (den skyddar mot spells), så mot magi måste det sägas här.
+   def magic_counter_damage_against(self, attacker):
+      return 0
+
 
 # En spell spelas från handen mot ett mål, verkar direkt och hamnar sedan i gravhögen.
-# Den ligger aldrig på brädet, så den har ingen health, armor eller attack.
-# magic är spellens styrka. special beskriver vad den gör.
-# Spells slåss alltid med 🪄 magic, och målets 🪄 magic tar emot. Därför går de igenom armor.
+# Den ligger aldrig på brädet, så den har inga stats alls, som i Hearthstone.
+# Allt den gör, och hur mycket, står i effekten: DamageOneEnemy(7) gör 7 magisk skada.
+# special är texten som visas för spelaren, och den ska nämna samma tal.
 class SpellCard(Card):
-   def __init__(self, faction=None, name="Untitled", magic=0, ritual=0, special=None, rarity=Rarity.COMMON, effect=None, cost=0):
-      super().__init__(faction, name, ritual, special, rarity, cost)
-      self.magic = magic
+   def __init__(self, faction=None, name="Untitled", special=None, rarity=Rarity.COMMON, effect=None, cost=0):
+      super().__init__(faction, name, special, rarity, cost)
       self.effect = effect
 
    def __str__(self):
       return (f"{self.faction.value if self.faction else '–'} - {self.name} (Spell); "
-              f"[ 🪄 {self.magic}, ☩ {self.ritual}], "
               f"SPC: {self.special.value if self.special else '–'}, RAR: {self.rarity.value}")
 
    def __repr__(self):
-      return (f"SpellCard(faction={self.faction!r}, name={self.name!r}, magic={self.magic!r}, "
-              f"ritual={self.ritual!r}, special={self.special!r}, rarity={self.rarity!r}, "
-              f"effect={self.effect!r}, cost={self.cost!r})")
+      return (f"SpellCard(faction={self.faction!r}, name={self.name!r}, special={self.special!r}, "
+              f"rarity={self.rarity!r}, effect={self.effect!r}, cost={self.cost!r})")
 
    def short(self):
-      stats = []
-      if self.magic > 0:
-         stats.append(f"🪄 {self.magic}")
-      stats.append(f"☩ {self.ritual}")
-      return f"{self.name} (Spell) [{' '.join(stats)}]"
-
-   # Hur mycket skada spellen gör på target: 🪄 magic minus målets 🪄 magic, minst 0.
-   def damage_against(self, target):
-      return max(0, self.magic - target.get_magic())
+      return f"{self.name} (Spell)"
 
 
    # Get methods
    def get_effect(self):
       return self.effect
-
-   def get_magic(self):
-      return self.magic
-
-
-   # Set methods
-
-   def set_magic(self, magic):
-      self.magic = magic
