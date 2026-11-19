@@ -63,13 +63,13 @@ class SmartAI(Controller):
    WEIGHTS = {
       "win": 1000,                  # vunnen match (förlust ger lika mycket minus)
       "hero_health": 1.0,           # per ❤️ på hjälten
+      "hero_armor": 0.5,            # per 🛡️ på hjälten (nöts av varje träff, så värd mindre än ❤️)
       "ritual": 1.5,                # per ☩ på hjälten (upp till målet)
       "ritual_income": 3.0,         # per ☩ på korten på brädet (ger ritual varje tur de ligger kvar)
       "own_ritual_reached": 50,     # jag har nått målet: vinner nästa tur om ingen stoppar mig
       "enemy_ritual_reached": 300,  # motståndaren har nått målet: vinner i början av sin tur!
       "attack": 1.0,                # per ⚔️ på ett kort på brädet
       "health": 0.5,                # per ❤️ på ett kort på brädet
-      "armor": 0.5,                 # per 🛡️ på ett kort på brädet
       "magic": 0.3,                 # per 🪄 på ett kort på brädet
       "guard": 1.5,                 # ett kort med Guard skyddar resten
       "hidden": 1.5,                # ett kort som inte kan anfallas (Veil of Tiamat)
@@ -186,6 +186,7 @@ class SmartAI(Controller):
       goal = player.get_faction().get_ritual_goal()
 
       value = w["hero_health"] * hero.get_health()
+      value += w["hero_armor"] * hero.get_armor()
       value += w["ritual"] * min(hero.get_ritual(), goal)   # mer än målet är inte värt mer
       value += w["hand_card"] * len(player.get_hand())
       value += w["resource"] * player.get_resource()
@@ -207,12 +208,11 @@ class SmartAI(Controller):
    def board_value(self, card):
       return self.card_value(card) + self.weights["ritual_income"] * card.get_ritual()
 
-   # Värdet av ett korts stats. Getters räknar in buffarna (Bone Ward, Terror ...).
+   # Värdet av ett korts stats. Getters räknar in buffarna (Whispered Hex, Terror ...).
    def card_value(self, card):
       w = self.weights
       value = (w["attack"] * card.get_attack()
                + w["health"] * card.get_health()
-               + w["armor"] * card.get_armor()
                + w["magic"] * card.get_magic())
       if card.has_guard():
          value += w["guard"]

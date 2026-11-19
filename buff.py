@@ -1,7 +1,7 @@
 """
 Buffs: temporary changes fastened to a card or a hero.
 
-A buff can change stats (attack, armor, magic) and/or give a status, for
+A buff can change stats (attack, magic) and/or give a status, for
 example "cannot attack" or "Guard". The card's own values are never changed:
 get_attack() and the others add the buffs on top. When the buff expires it is
 simply removed. (Hearthstone calls these enchantments, Fireplace calls them
@@ -17,16 +17,15 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 
 class Buff:
-   def __init__(self, owner, attack=0, armor=0, magic=0,
+   def __init__(self, owner, attack=0, magic=0,
                 cannot_attack=False, cannot_be_attacked=False, guard=False,
                 no_melee_damage=False, ritual_protected=False, this_turn_only=False):
       self.owner = owner                            # spelaren som lade buffen
       self.attack = attack                          # + eller − på attack
-      self.armor = armor                            # + eller − på armor
       self.magic = magic                            # + eller − på magic
       self.cannot_attack = cannot_attack            # Terror, The King in Yellow
-      self.cannot_be_attacked = cannot_be_attacked  # Veil of Tiamat
-      self.guard = guard                            # Kiss of Lilith, Ward of the Unbegotten
+      self.cannot_be_attacked = cannot_be_attacked  # Veil of Tiamat, Void Wraith
+      self.guard = guard                            # Kiss of Lilith
       self.no_melee_damage = no_melee_damage        # Seal of the Black Sun
       self.ritual_protected = ritual_protected      # Seal of Apep
       self.this_turn_only = this_turn_only          # True: går ut i slutet av turen
@@ -67,12 +66,6 @@ class BuffList:
       total = 0
       for buff in self.buffs:
          total += buff.attack
-      return total
-
-   def armor_bonus(self):
-      total = 0
-      for buff in self.buffs:
-         total += buff.armor
       return total
 
    def magic_bonus(self):

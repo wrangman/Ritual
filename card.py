@@ -43,7 +43,7 @@ class Special(Enum):
    DEVOUR = "When played: eats a dead creature in your graveyard and gains its attack and health"
 
    # Academics, figurer
-   SACRIFICE = ("When it dies, a random card of yours gets its health and armor. "
+   SACRIFICE = ("When it dies, a random card of yours gets its health. "
                 "Instead of attacking, it can sacrifice itself and you choose the card")
 
    # Ghouls, spells
@@ -55,12 +55,12 @@ class Special(Enum):
    DRAIN_LIFE = "Deals 2 magic damage to an enemy card and restores 2 health to your hero"
    WITHER = "An enemy card loses 3 attack for good"
    TERROR = "An enemy card cannot attack next turn"
-   BONE_WARD = "One of your cards gets +2 armor"
+   BONE_WARD = "Your hero gains 2 armor"
    SOUL_SIPHON = "Steals 3 ritual from the opponent"
 
    # Ghouls, spells som skyddar ritual
    VEIL_OF_TIAMAT = "One of your ritual cards cannot be attacked until your next turn"
-   SCALES_OF_LEVIATHAN = "One of your ritual cards gets +2 armor and +2 magic"
+   SCALES_OF_LEVIATHAN = "One of your ritual cards gets +3 health and +2 magic"
    SEAL_OF_APEP = "Your ritual cannot be lowered or stolen until your next turn"
    KISS_OF_LILITH = "Gives one of your cards Guard until your next turn"
    CURSE_OF_CHORONZON = "The next enemy card that attacks one of your ritual cards takes the same damage"
@@ -77,7 +77,7 @@ class Special(Enum):
    WHISPERED_HEX = "An enemy card has 2 less attack until your next turn"
    NECRONOMICON = "Deals 7 magic damage to one enemy"
    PNAKOTIC_MANUSCRIPTS = "Deals 3 magic damage to all enemy cards"
-   CULTES_DES_GOULES = "Removes all armor from an enemy card"
+   CULTES_DES_GOULES = "An enemy card loses 3 attack for good"
    UNAUSSPRECHLICHEN_KULTEN = "Steals 3 ritual from the opponent, but your hero takes 1 damage"
    BOOK_OF_EIBON = "Burns away 3 of the opponent's ritual"
    RLYEH_TEXT = "Draw two cards"
@@ -94,8 +94,8 @@ class Special(Enum):
    CODEX_OF_THE_ELEVEN_KEYS = "Drains 3 health from an enemy card and gives it to a random card of yours"
 
 
-# Magisk skada, för både spells och figurers magiska anfall: styrkan minus målets 🪄 magic,
-# minst 0. Armor hjälper inte mot magi. Formeln står bara här, så den är lika överallt.
+# Magisk skada från spells: styrkan minus målets 🪄 magic, minst 0.
+# 🪄 skyddar mot magi. Formeln står bara här, så den är lika överallt.
 def magic_damage(strength, target):
    return max(0, strength - target.get_magic())
 
@@ -155,13 +155,13 @@ class Card:
 
 
 # En figur som läggs på brädet, anfaller och kan bli anfallen.
-# Figurer slåss alltid med ⚔️ attack, och målets 🛡️ armor tar emot.
+# Figurer har ingen armor (som i Hearthstone): ett anfall gör hela ⚔️ attack i skada.
+# 🪄 magic skyddar mot spells. Bara hjälten har armor.
 class CreatureCard(Card):
-   def __init__(self, faction=None, name="Untitled", attack_name=None, attack=0, armor=0, magic=0, health=0, ritual=0, special=None, rarity=Rarity.COMMON, cost=0):
+   def __init__(self, faction=None, name="Untitled", attack_name=None, attack=0, magic=0, health=0, ritual=0, special=None, rarity=Rarity.COMMON, cost=0):
       super().__init__(faction, name, special, rarity, cost)
       self.attack_name = attack_name
       self.attack = attack
-      self.armor = armor
       self.magic = magic
       self.health = health
       self.ritual = ritual       # ☩ som hjälten får i början av varje egen tur, så länge kortet ligger kvar
@@ -172,12 +172,12 @@ class CreatureCard(Card):
 
    def __str__(self):
       return (f"{self.faction.value if self.faction else '–'} - {self.name}; {self.attack_name or '–'}; "
-              f"[ ⚔️ {self.get_attack()}, 🪄 {self.get_magic()}, ❤️ {self.health}, 🛡️ {self.get_armor()}, ☩{self.ritual}], "
+              f"[ ⚔️ {self.get_attack()}, 🪄 {self.get_magic()}, ❤️ {self.health}, ☩{self.ritual}], "
               f"SPC: {self.special.value if self.special else '–'}, RAR: {self.rarity.value}")
 
    def __repr__(self):
       return (f"CreatureCard(faction={self.faction!r}, name={self.name!r}, attack_name={self.attack_name!r}, "
-              f"attack={self.attack!r}, armor={self.armor!r}, "
+              f"attack={self.attack!r}, "
               f"magic={self.magic!r}, health={self.health!r}, ritual={self.ritual!r}, "
               f"special={self.special!r}, rarity={self.rarity!r}, cost={self.cost!r})")
 
@@ -231,6 +231,11 @@ class CreatureCard(Card):
    def take_damage(self, amount):
       self.health -= amount
 
+   # En träff i ett anfall (inte från en spell). För en figur är det bara skada;
+   # hjälten skriver över metoden, eftersom dess armor nöts av varje träff.
+   def take_hit(self, damage):
+      self.take_damage(damage)
+
    # Läker, men aldrig över max_health
    def restore_health(self, amount):
       self.health = min(self.health + amount, self.max_health)
@@ -247,9 +252,6 @@ class CreatureCard(Card):
    def increase_magic(self, amount):
       self.magic += amount
 
-   def repair_armor(self, amount):
-      self.armor += amount
-
    # Sänker attack, men aldrig under 0
    def lower_attack(self, amount):
       self.attack = max(0, self.attack - amount)
@@ -265,7 +267,6 @@ class CreatureCard(Card):
       if self.get_magic() > 0:
          stats.append(f"🪄 {self.get_magic()}")
       stats.append(f"❤️ {self.health}")
-      stats.append(f"🛡️ {self.get_armor()}")
       stats.append(f"☩ {self.ritual}")
       return f"{self.name} [{' '.join(stats)}]{self.statuses_text()}"
 
@@ -295,43 +296,33 @@ class CreatureCard(Card):
    def has_attacked(self):
       return self.attacked_this_turn
 
-   # Hur mycket skada figuren gör på target: ⚔️ attack minus målets 🛡️ armor, minst 0.
-   # Ett mål som är skyddat mot figurer tar ingen skada alls (Seal of the Black Sun).
+   # Hur mycket skada figuren gör på target med ett anfall. Målet räknar själv ut
+   # hur mycket det tar (polymorfism): en figur tar hela ⚔️, hjälten drar av sin armor.
    def damage_against(self, target):
-      if target.is_immune_to_melee():
+      return target.damage_from_attack(self.get_attack())
+
+   # Hur mycket skada figuren tar av ett anfall: hela anfallet, eftersom figurer inte har armor.
+   # Är figuren skyddad mot anfall (Seal of the Black Sun) tar den ingen skada alls.
+   def damage_from_attack(self, attack):
+      if self.is_immune_to_melee():
          return 0
-      return max(0, self.get_attack() - target.get_armor())
+      return attack
 
    # Hur mycket figuren slår tillbaka när den blir anfallen (som i Hearthstone).
-   # Samma formel som ett vanligt anfall: ⚔️ attack minus anfallarens 🛡️ armor.
+   # Samma formel som ett vanligt anfall, åt andra hållet.
    # Ritualkort har ⚔️ 0 och slår därför aldrig tillbaka. En buff som Terror hindrar
    # bara kortet från att anfalla, inte från att försvara sig.
    def counter_damage_against(self, attacker):
       return self.damage_against(attacker)
 
-   # Magiskt anfall: en figur med 🪄 magic kan anfalla med magi i stället för med ⚔️.
-   # Det är samma anfall för turen, med samma regler för väntetur, Guard och mål.
-   def can_magic_attack(self):
-      return self.can_attack() and self.get_magic() > 0
-
-   # Magisk skada räknas som för spells, med figurens 🪄 magic som styrka.
-   # Skydd mot melee (Seal of the Black Sun) gäller inte.
-   def magic_damage_against(self, target):
-      return magic_damage(self.get_magic(), target)
-
-   # Målet slår tillbaka på samma sätt som det blev träffat: med magi.
-   # Ett kort utan 🪄 kan alltså inte slå tillbaka mot ett magiskt anfall.
-   def magic_counter_damage_against(self, attacker):
-      return self.magic_damage_against(attacker)
-
-   # Hur mycket skada kortet kan göra på target med sitt bästa anfall (⚔️ eller 🪄).
-   # AI:n använder det för att bedöma hotet under ägarens nästa tur. Väntetur räknas
-   # inte, eftersom kortet hinner bli redo till dess. Terror och The King in Yellow
-   # räknas, eftersom de varar till nästa tur för den som lade dem.
+   # Hur mycket skada kortet kan göra på target med ett anfall under ägarens nästa tur.
+   # AI:n använder det för att bedöma hotet. Väntetur räknas inte, eftersom kortet hinner
+   # bli redo till dess. Terror och The King in Yellow räknas, eftersom de varar till
+   # nästa tur för den som lade dem.
    def threat_against(self, target):
       if self.buffs.cannot_attack():
          return 0
-      return max(self.damage_against(target), self.magic_damage_against(target))
+      return self.damage_against(target)
 
 
    # Get methods
@@ -339,12 +330,9 @@ class CreatureCard(Card):
    def get_attack_name(self):
       return self.attack_name
 
-   # attack, armor och magic räknas med buffarna, men aldrig under 0
+   # attack och magic räknas med buffarna, men aldrig under 0
    def get_attack(self):
       return max(0, self.attack + self.buffs.attack_bonus())
-
-   def get_armor(self):
-      return max(0, self.armor + self.buffs.armor_bonus())
 
    def get_magic(self):
       return max(0, self.magic + self.buffs.magic_bonus())
@@ -367,9 +355,6 @@ class CreatureCard(Card):
    def set_attack(self, attack):
       self.attack = attack
 
-   def set_armor(self, armor):
-      self.armor = armor
-
    def set_magic(self, magic):
       self.magic = magic
 
@@ -381,20 +366,20 @@ class CreatureCard(Card):
 
 
 # Ett ritualkort ligger på brädet och bygger ritual, men kan aldrig anfalla.
-# Det kan bli anfallet, så det har health, armor och magic som andra figurer.
+# Det kan bli anfallet, så det har health och magic som andra figurer.
 # Bara ritualkort kan skyddas av spells som Veil of Tiamat.
 class RitualCard(CreatureCard):
-   def __init__(self, faction=None, name="Untitled", armor=0, magic=0, health=0, ritual=0, special=None, rarity=Rarity.COMMON, cost=0):
+   def __init__(self, faction=None, name="Untitled", magic=0, health=0, ritual=0, special=None, rarity=Rarity.COMMON, cost=0):
       super().__init__(faction, name, attack_name=None, attack=0,
-                       armor=armor, magic=magic, health=health, ritual=ritual, special=special, rarity=rarity, cost=cost)
+                       magic=magic, health=health, ritual=ritual, special=special, rarity=rarity, cost=cost)
 
    def __str__(self):
       return (f"{self.faction.value if self.faction else '–'} - {self.name} (Ritual); "
-              f"[ 🪄 {self.get_magic()}, ❤️ {self.health}, 🛡️ {self.get_armor()}, ☩ {self.ritual}], "
+              f"[ 🪄 {self.get_magic()}, ❤️ {self.health}, ☩ {self.ritual}], "
               f"SPC: {self.special.value if self.special else '–'}, RAR: {self.rarity.value}")
 
    def __repr__(self):
-      return (f"RitualCard(faction={self.faction!r}, name={self.name!r}, armor={self.armor!r}, "
+      return (f"RitualCard(faction={self.faction!r}, name={self.name!r}, "
               f"magic={self.magic!r}, health={self.health!r}, ritual={self.ritual!r}, "
               f"special={self.special!r}, rarity={self.rarity!r}, cost={self.cost!r})")
 
@@ -403,7 +388,6 @@ class RitualCard(CreatureCard):
       if self.get_magic() > 0:
          stats.append(f"🪄 {self.get_magic()}")
       stats.append(f"❤️ {self.health}")
-      stats.append(f"🛡️ {self.get_armor()}")
       stats.append(f"☩ {self.ritual}")
       return f"{self.name} (Ritual) [{' '.join(stats)}]{self.statuses_text()}"
 
@@ -411,12 +395,7 @@ class RitualCard(CreatureCard):
    def can_attack(self):
       return False
 
-   # Ritualkort slåss inte. Mot melee slår de inte tillbaka eftersom de har ⚔️ 0,
-   # men många har hög 🪄 magic (den skyddar mot spells), så mot magi måste det sägas här.
-   def magic_counter_damage_against(self, attacker):
-      return 0
-
-   # Ritualkort anfaller aldrig, trots hög 🪄 magic, så de är inget hot.
+   # Ritualkort anfaller aldrig, så de är inget hot.
    def threat_against(self, target):
       return 0
 

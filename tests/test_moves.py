@@ -13,7 +13,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from buff import Buff
-from move import PlayCard, Attack, MagicAttack
+from move import PlayCard, Attack
 from player import Player
 from terminal_ui import TerminalUI
 from tests.helpers import new_game, take_from_deck, take_creatures, put_ready_on_board
@@ -67,13 +67,22 @@ class TestLegalMoves(unittest.TestCase):
    def test_guard_must_be_attacked_first(self):
       attacker = take_from_deck(self.ghouls, "Ossuary Keeper")
       put_ready_on_board(self.ghouls, attacker)
-      # Vi ger en av Academics figurer Guard med en buff (som Ward of the Unbegotten)
+      # Vi ger en av Academics figurer Guard med en buff (som Kiss of Lilith)
       defender, other = take_creatures(self.academics, 2)
       put_ready_on_board(self.academics, defender)
       put_ready_on_board(self.academics, other)
       defender.add_buff(Buff(self.academics, guard=True))
       targets = [move.get_target() for move in moves_for(attacker, self.game.get_legal_moves(self.ghouls))]
       self.assertEqual(targets, [defender])
+
+   def test_magic_gives_no_extra_attack(self):
+      # 🪄 skyddar bara mot spells: Keziah Mason (🪄 5) får ett vanligt anfall per mål, inget mer
+      self.game.current_player = self.academics
+      keziah = take_from_deck(self.academics, "Keziah Mason")
+      put_ready_on_board(self.academics, keziah)
+      moves = moves_for(keziah, self.game.get_legal_moves(self.academics))
+      self.assertEqual(len(moves), 1)   # bara hjälten, Ghouls bräde är tomt
+      self.assertIsInstance(moves[0], Attack)
 
    def test_copy_for_simulation_does_not_change_the_real_game(self):
       attacker = take_from_deck(self.ghouls, "Ossuary Keeper")
@@ -113,19 +122,6 @@ class TestTerminalChoosesAmongLegalMoves(unittest.TestCase):
       move = self.choose(["a", "2"])
       self.assertIsInstance(move, Attack)
       self.assertIs(move.get_target(), second)
-
-   def test_choose_magic_attack_then_target(self):
-      self.game.current_player = self.academics
-      keziah = take_from_deck(self.academics, "Keziah Mason")   # har 🪄, kan anfalla på två sätt
-      put_ready_on_board(self.academics, keziah)
-      first, second = take_creatures(self.ghouls, 2)
-      put_ready_on_board(self.ghouls, first)
-      put_ready_on_board(self.ghouls, second)
-      moves = self.game.get_legal_moves(self.academics)
-      with patch("builtins.input", side_effect=["a", "2", "1"]), redirect_stdout(io.StringIO()):
-         move = self.ui.choose_move(self.game, self.academics, moves)   # a, magic attack, mål 1
-      self.assertIsInstance(move, MagicAttack)
-      self.assertIs(move.get_target(), first)
 
    def test_invalid_answers_are_asked_again(self):
       self.ghouls.hand = [take_from_deck(self.ghouls, "Elder Ghoul")]   # kostar 3

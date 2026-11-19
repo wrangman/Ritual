@@ -3,11 +3,14 @@ TODO: gör så man kan välja spelare och datorn får den andra. eller kanske to
 --- Kvar efter 2026-11-19 ---
 
 BALANS
-- Ritualtakten är för snabb. Ghouls bygger ca 10 ☩ per tur (t.ex. Forbidden Painting 5 + Choir 4 + Charnel Priest 1),
-  och Academics har inget som hinner stoppa det. Förslag att titta på: högre ritualmål, mindre ☩ på ritualkorten,
-  mer ❤️ på dem eller fler sätt att sänka ritual.
-- Academics vinner 68 % (63 % sedan AI:n lärde sig spela kort som ger resurs, sedan 68 % med spökena).
-  Användarens idé: färre/svagare ritualkort.
+- Magiska anfall borttagna: Academics vinner 30 % (68 % med magiska anfall).
+- 5 Novices (tier 1, kostnad 1) i stället för andra exemplaret av 5 grundspells: Academics 28 %, alltså ingen skillnad.
+  Leken: 23 figurer, 22 spells, 5 ritualkort. Användaren vill ha kvar många spells.
+- Ritualkort ☩ 5 → 3 och 4 → 2, figurer högst ☩ 1 (Elder Ghoul, Wilbur, Keziah sänkta).
+  Matcherna blev längre (16,6 → 19,1 turer), ritualseger 84 % → 66 %, men Academics 26 %.
+  Ritualtakten var alltså inte orsaken till att Academics förlorar. Ghouls vinner nu oftare genom strid.
+- Armor borttagen från figurer (bara hjälten har armor, som nöts 1 per träff): Academics 50 %, Ghouls 50 %.
+- NÄSTA: budget per kostnad, som "vanilla test" i Hearthstone, och räkna om alla kort med den.
 - Den som börjar vinner nu bara 44 % (3/4 kort i starthanden + mulligan + Trinket). Tvåan har alltså fått
   lite för mycket. Förslag att prova: ta bort extrakortet eller Trinket, en sak i taget.
 
@@ -22,7 +25,7 @@ RÄKNA RADER KOD (bara .py-filer, inga tomma rader) – kör i projektmappen
   (Get-ChildItem -Recurse -Filter *.py | Get-Content | Where-Object { $_.Trim() -ne "" }).Count
 
 KÖR SIMULERING EFTER VARJE BALANSÄNDRING
-- python3 simulate.py 200 --seed 1   (senast: Academics 68 %, Ghouls 32 %, den som började vann 44 %)
+- python3 simulate.py 200 --seed 1   (senast: Academics 50 %, Ghouls 50 %, den som började vann 44 %)
 
 GJORT 2026-11-19 (inte committat än)
 - Magiskt anfall för figurer med 🪄 (🪄 mot 🪄, armor hjälper inte, målet slår tillbaka med magi).
@@ -41,3 +44,4 @@ GJORT 2026-11-19 (inte committat än)
 - Mulligan, som i Hearthstone: starthand 3 kort (tvåan 4), byt hur många kort man vill en gång.
   Valet går via controllern (choose_mulligan), så PygameUI behöver bara en metod med samma namn.
   (Tester för mulligan saknas.)
+- Magiska anfall borttagna igen: ⚔️ är strid, 🛡️ skyddar mot ⚔️, 🪄 skyddar mot spells.

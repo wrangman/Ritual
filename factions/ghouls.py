@@ -12,7 +12,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 import copy
 from effect import (DamageOneEnemy, DamageAllEnemyCards, HealOwnHero, LowerAttack,
                     BuffOwnCard, LowerRitual, StealRitual, ReviveRandom, Combined,
-                    GiveBuff, Infect, CurseRitualAttacker)
+                    GiveBuff, Infect, CurseRitualAttacker, GainArmor)
 from faction import Faction
 from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionName
 from hero import Hero, HeroAbility
@@ -23,7 +23,6 @@ tier_1 = [
    CreatureCard(FactionName.GHOULS, "Corpse Looter",
                 attack_name="Grave Knife",
                 attack=2,
-                armor=1,
                 magic=0,
                 health=2,
                 ritual=0,
@@ -34,7 +33,6 @@ tier_1 = [
    CreatureCard(FactionName.GHOULS, "Gravedigger",
                 attack_name="Rusty Shovel",
                 attack=1,
-                armor=2,
                 magic=0,
                 health=1,
                 ritual=0,
@@ -45,7 +43,6 @@ tier_1 = [
    CreatureCard(FactionName.GHOULS, "Changeling Child",
                 attack_name="Needle Teeth",
                 attack=1,
-                armor=1,
                 magic=0,
                 health=1,
                 ritual=0,
@@ -56,7 +53,6 @@ tier_1 = [
    CreatureCard(FactionName.GHOULS, "Tunnel Scavenger",
                 attack_name="Filthy Claws",
                 attack=2,
-                armor=2,
                 magic=0,
                 health=2,
                 ritual=0,
@@ -67,7 +63,6 @@ tier_1 = [
    CreatureCard(FactionName.GHOULS, "Bone Gnawer",
                 attack_name="Gnashing Jaws",
                 attack=2,
-                armor=1,
                 magic=0,
                 health=3,
                 ritual=0,
@@ -78,7 +73,6 @@ tier_1 = [
    CreatureCard(FactionName.GHOULS, "Mourner in Black",
                 attack_name="Funeral Dagger",
                 attack=1,
-                armor=2,
                 magic=0,
                 health=2,
                 ritual=1,
@@ -92,7 +86,6 @@ tier_2 = [
    CreatureCard(FactionName.GHOULS, "Grave Eater",
                 attack_name="Rending Bite",
                 attack=3,
-                armor=3,
                 magic=0,
                 health=2,
                 ritual=0,
@@ -103,7 +96,6 @@ tier_2 = [
    CreatureCard(FactionName.GHOULS, "Crypt Warden",
                 attack_name="Iron Coffin Nail",
                 attack=3,
-                armor=4,
                 magic=0,
                 health=2,
                 ritual=0,
@@ -114,7 +106,6 @@ tier_2 = [
    CreatureCard(FactionName.GHOULS, "Ossuary Keeper",
                 attack_name="Femur Club",
                 attack=4,
-                armor=3,
                 magic=0,
                 health=3,
                 ritual=0,
@@ -125,7 +116,6 @@ tier_2 = [
    CreatureCard(FactionName.GHOULS, "Hollow-Eyed Stalker",
                 attack_name="Ambush from the Dark",
                 attack=4,
-                armor=4,
                 magic=0,
                 health=3,
                 ritual=1,
@@ -136,7 +126,6 @@ tier_2 = [
    CreatureCard(FactionName.GHOULS, "Charnel Priest",
                 attack_name="Ritual Sickle",
                 attack=3,
-                armor=3,
                 magic=1,
                 health=2,
                 ritual=1,
@@ -145,12 +134,11 @@ tier_2 = [
                 rarity=Rarity.RARE),
 ]
 
-# Tier 3: high stats, ritual max 3 (4 cards x 2 copies = 8)
+# Tier 3: high stats, ritual max 1 (4 cards x 2 copies = 8).
 tier_3 = [
    CreatureCard(FactionName.GHOULS, "Bone Crusher",
                 attack_name="Skull Maul",
                 attack=6,
-                armor=4,
                 magic=0,
                 health=4,
                 ritual=1,
@@ -161,7 +149,6 @@ tier_3 = [
    CreatureCard(FactionName.GHOULS, "Butcher of the Underworld",
                 attack_name="Carrion Cleaver",
                 attack=5,
-                armor=5,
                 magic=1,
                 health=8,
                 ritual=1,
@@ -172,10 +159,9 @@ tier_3 = [
    CreatureCard(FactionName.GHOULS, "Elder Ghoul",
                 attack_name="Ancient Talons",
                 attack=6,
-                armor=5,
                 magic=0,
                 health=6,
-                ritual=3,
+                ritual=1,
                 special=Special.GUARD,
                 cost=3,
                 rarity=Rarity.EPIC),
@@ -183,7 +169,6 @@ tier_3 = [
    CreatureCard(FactionName.GHOULS, "Catacomb Tyrant",
                 attack_name="Tombstone Smash",
                 attack=5,
-                armor=6,
                 magic=0,
                 health=6,
                 ritual=1,
@@ -192,49 +177,46 @@ tier_3 = [
                 rarity=Rarity.EPIC),
 ]
 
-# Ritual builders only (5 cards x 1 copy = 5)
+# Ritual builders only (5 cards x 1 copy = 5).
+# ☩ 2–3 (sänkt från 4–5 2026-11-19): med två ritualkort på brädet nåddes målet 15 på två turer.
+# Figurer ger högst ☩ 1, så att ritualkorten är det som bygger ritualen.
 ritual_cards = [
    RitualCard(FactionName.GHOULS, "Choir of the Corpse-Eaters",
-              armor=0,
               magic=0,
               health=8,
-              ritual=4,
+              ritual=2,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.GHOULS, "The Forbidden Painting",
-              armor=0,
               magic=0,
               health=8,
-              ritual=5,
+              ritual=3,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.GHOULS, "Feast of the Dead",
-              armor=0,
               magic=0,
               health=10,
-              ritual=4,
+              ritual=2,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.GHOULS, "Rite of Exhumation",
-              armor=0,
               magic=0,
               health=10,
-              ritual=4,
+              ritual=2,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.GHOULS, "Altar of Bones",
-              armor=0,
               magic=0,
               health=10,
-              ritual=5,
+              ritual=3,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
@@ -294,7 +276,7 @@ spell_cards = [
              special=Special.BONE_WARD,
              cost=2,
              rarity=Rarity.RARE,
-             effect=BuffOwnCard(armor=2)),
+             effect=GainArmor(2)),   # Ghouls spells ger hjälten högst 2 armor
 
    SpellCard(FactionName.GHOULS, "Soul Siphon",
              special=Special.SOUL_SIPHON,
@@ -313,7 +295,7 @@ spell_cards = [
              special=Special.SCALES_OF_LEVIATHAN,
              cost=2,
              rarity=Rarity.RARE,
-             effect=BuffOwnCard(armor=2, magic=2, ritual_only=True)),
+             effect=BuffOwnCard(health=3, magic=2, ritual_only=True)),
 
    SpellCard(FactionName.GHOULS, "Seal of Apep",
              special=Special.SEAL_OF_APEP,

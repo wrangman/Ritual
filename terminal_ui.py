@@ -16,7 +16,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 import time
 from card import SpellCard, RitualCard, FactionName
-from move import Attack, MagicAttack, Sacrifice
+from move import Attack, Sacrifice
 
 
 RESET = "\033[0m"   # tillbaka till terminalens vanliga färg
@@ -25,7 +25,7 @@ DIM = "\033[2m"     # grå, svag text: för kort som inte går att använda just
 LETTERS = "abcdefghijklmnopqrstuvwxyz"   # korten i armén väljs med bokstäver
 
 # Vad varje sorts drag med ett kort på brädet heter när spelaren ska välja, i den ordning de visas
-ARMY_MOVE_KINDS = [(Attack, "attack"), (MagicAttack, "magic attack"), (Sacrifice, "sacrifice")]
+ARMY_MOVE_KINDS = [(Attack, "attack"), (Sacrifice, "sacrifice")]
 
 RESOURCE_NAME = "Resource"   # vad resursen heter i spelet (namnet är inte bestämt än)
 
@@ -110,7 +110,7 @@ class TerminalUI:
          if moves is None:
             lines.append(f"   {self.colored(card)}")
          elif self.moves_for(card, moves):
-            # Till exempel "can attack, magic attack or sacrifice"
+            # Till exempel "can attack or sacrifice"
             kinds = [kind for kind, _ in self.group_by_kind(self.moves_for(card, moves))]
             can_do = "can " + self.or_list(kinds)
             lines.append(f"{LETTERS[index]}. {self.colored(card)}  – {can_do}")
@@ -271,7 +271,7 @@ class TerminalUI:
          if move.ends_turn():
             return move
 
-   # Delar upp kortets drag efter sort: [("attack", [...]), ("magic attack", [...]), ...].
+   # Delar upp kortets drag efter sort: [("attack", [...]), ("sacrifice", [...])].
    # Bara sorter som kortet faktiskt kan göra kommer med.
    def group_by_kind(self, card_moves):
       groups = []
@@ -281,14 +281,14 @@ class TerminalUI:
             groups.append((kind, found))
       return groups
 
-   # ["attack", "magic attack", "sacrifice"] -> "attack, magic attack or sacrifice"
+   # ["attack", "sacrifice"] -> "attack or sacrifice"; med fler ord: "a, b or c"
    def or_list(self, words):
       if len(words) == 1:
          return words[0]
       return ", ".join(words[:-1]) + " or " + words[-1]
 
-   # Kortet kan göra ett eller flera drag. Kan det göra flera sorter (anfalla, anfalla med magi,
-   # offra sig) frågas först vilken, så att fiender och egna kort inte blandas i samma lista.
+   # Kortet kan göra ett eller flera drag. Kan det göra flera sorter (anfalla, offra sig)
+   # frågas först vilken, så att fiender och egna kort inte blandas i samma lista.
    # Har dragen olika mål får spelaren sedan välja mål.
    def choose_move_for_card(self, card_moves):
       groups = self.group_by_kind(card_moves)
@@ -308,7 +308,7 @@ class TerminalUI:
       for move in card_moves:
          targets.append(move.get_target())
       if isinstance(card_moves[0], Sacrifice):
-         target = self.choose_target(targets, "Give its health and armor to which of your cards?")
+         target = self.choose_target(targets, "Give its health to which of your cards?")
       else:
          target = self.choose_target(targets)
       for move in card_moves:

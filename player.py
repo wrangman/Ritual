@@ -245,12 +245,11 @@ class Player:
          if card.get_special() == Special.SACRIFICE and self.army:
             self.pass_on_strength(card, random.choice(self.army))
 
-   # SACRIFICE: det döda kortet ger sin ❤️ max health och sin 🛡️ armor till receiver för alltid.
-   # Kortet är redan dött, så buffarna är borta: det ger sina egna värden, inga tillfälliga.
+   # SACRIFICE: det döda kortet ger sin ❤️ max health till receiver för alltid.
+   # Det ger max health, inte den health som var kvar (den är 0 när kortet har dött).
    # Samma regel när kortet offras frivilligt (Game.sacrifice), då väljer spelaren receiver.
    def pass_on_strength(self, card, receiver):
       receiver.increase_health(card.get_max_health())
-      receiver.repair_armor(card.get_armor())
 
    def get_spell_targets(self):
       return self.get_army() + [self.get_hero()]

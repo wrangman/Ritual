@@ -68,8 +68,24 @@ class Hero:
    def increase_magic(self, amount):
       self.magic += amount
 
-   def repair_armor(self, amount):
+   # Armor: bara hjälten har armor (som i Hearthstone, där figurer inte har det).
+   # Den dras av från varje anfall, och nöts med 1 för varje träff, så 🛡️ 2 skyddar
+   # i två träffar: ⚔️ 3 gör först 3 - 2 = 1 skada, sedan 3 - 1 = 2.
+   # Spells går inte mot armor (🪄 tar emot dem), så de nöter den inte heller.
+   def gain_armor(self, amount):
       self.armor += amount
+
+   # Hur mycket skada hjälten tar av ett anfall: anfallet minus armor, minst 0.
+   def damage_from_attack(self, attack):
+      if self.is_immune_to_melee():
+         return 0
+      return max(0, attack - self.armor)
+
+   # En träff i ett anfall: skadan dras, och armorn nöts med 1 (även om den tog all skada)
+   def take_hit(self, damage):
+      self.take_damage(damage)
+      if self.armor > 0:
+         self.armor -= 1
 
    # Hjälten bygger vidare på sin ritual
    def add_ritual(self, amount):
@@ -103,10 +119,6 @@ class Hero:
    def counter_damage_against(self, attacker):
       return 0
 
-   # Hjälten slår inte heller tillbaka mot ett magiskt anfall
-   def magic_counter_damage_against(self, attacker):
-      return 0
-
    def is_immune_to_melee(self):
       return self.buffs.no_melee_damage()
 
@@ -126,12 +138,12 @@ class Hero:
    def get_health(self):
       return self.health
    
-   # attack, armor och magic räknas med buffarna, men aldrig under 0
+   # attack och magic räknas med buffarna, men aldrig under 0
    def get_attack(self):
       return max(0, self.attack + self.buffs.attack_bonus())
 
    def get_armor(self):
-      return max(0, self.armor + self.buffs.armor_bonus())
+      return self.armor
 
    def get_magic(self):
       return max(0, self.magic + self.buffs.magic_bonus())

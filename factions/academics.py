@@ -11,7 +11,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 import copy
 from effect import (DamageOneEnemy, GainResource, DamageAllEnemyCards,
-                    RemoveArmor, LowerRitual, StealRitual, GainRitual,
+                    LowerAttack, LowerRitual, StealRitual, GainRitual,
                     DrawCards, ReturnRandomToHand, LookAtTopCards, DamageOwnHero, Combined,
                     GiveBuff, ReflectNextAttack, SummonGhost, DrainHealth)
 from faction import Faction
@@ -19,15 +19,68 @@ from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionNa
 from hero import Hero, HeroAbility
 
 
-# The Academics have no tier 1. Their creatures are few, magic and weak in melee:
-# low armor, high magic. Their strength is spells from forbidden books.
+# The Academics have fewer creatures than the Ghouls and more spells.
+# Their creatures have high magic. Their strength is spells from forbidden books.
+
+# Tier 1: novices at Miskatonic University (5 cards x 1 copy = 5).
+# Lika starka som Ghouls tier 1, men med lite 🪄 magic, som skyddar mot spells.
+tier_1 = [
+   CreatureCard(FactionName.ACADEMICS, "Novice Scholar",
+                attack_name="Ink-Stained Fist",
+                attack=2,
+                magic=1,
+                health=3,
+                ritual=0,
+                special=None,
+                cost=1,
+                rarity=Rarity.COMMON),
+
+   CreatureCard(FactionName.ACADEMICS, "Novice Occultist",
+                attack_name="Chalk Sigil",
+                attack=1,
+                magic=2,
+                health=3,
+                ritual=1,
+                special=None,
+                cost=1,
+                rarity=Rarity.COMMON),
+
+   CreatureCard(FactionName.ACADEMICS, "Novice Antiquarian",
+                attack_name="Brass Magnifier",
+                attack=1,
+                magic=1,
+                health=3,
+                ritual=0,
+                special=None,
+                cost=1,
+                rarity=Rarity.COMMON),
+
+   CreatureCard(FactionName.ACADEMICS, "Novice Medium",
+                attack_name="Spirit Knock",
+                attack=1,
+                magic=3,
+                health=2,
+                ritual=0,
+                special=None,
+                cost=1,
+                rarity=Rarity.COMMON),
+
+   CreatureCard(FactionName.ACADEMICS, "Novice Field Researcher",
+                attack_name="Survey Pick",
+                attack=2,
+                magic=0,
+                health=2,
+                ritual=0,
+                special=None,
+                cost=1,
+                rarity=Rarity.COMMON),
+]
 
 # Tier 2: scholars of Arkham (5 cards x 2 copies = 10)
 tier_2 = [
-   CreatureCard(FactionName.ACADEMICS, "Miskatonic Student",
+   CreatureCard(FactionName.ACADEMICS, "Miskatonic Apprentice",
                 attack_name="Heavy Textbook",
                 attack=3,
-                armor=1,
                 magic=2,
                 health=2,
                 ritual=1,
@@ -38,7 +91,6 @@ tier_2 = [
    CreatureCard(FactionName.ACADEMICS, "Restricted Stacks Librarian",
                 attack_name="Iron-Bound Tome",
                 attack=3,
-                armor=2,
                 magic=2,
                 health=2,
                 ritual=0,
@@ -49,7 +101,6 @@ tier_2 = [
    CreatureCard(FactionName.ACADEMICS, "Dark Occultist",
                 attack_name="Ceremonial Athame",
                 attack=3,
-                armor=1,
                 magic=3,
                 health=2,
                 ritual=1,
@@ -60,7 +111,6 @@ tier_2 = [
    CreatureCard(FactionName.ACADEMICS, "Expedition Geologist",
                 attack_name="Rock Hammer",
                 attack=4,
-                armor=2,
                 magic=1,
                 health=3,
                 ritual=0,
@@ -71,7 +121,6 @@ tier_2 = [
    CreatureCard(FactionName.ACADEMICS, "Night Archivist",
                 attack_name="Lantern Swing",
                 attack=3,
-                armor=1,
                 magic=3,
                 health=3,
                 ritual=1,
@@ -85,7 +134,6 @@ tier_3 = [
    CreatureCard(FactionName.ACADEMICS, "Dr. Francis Morgan",
                 attack_name="Hunting Rifle",
                 attack=5,
-                armor=3,
                 magic=3,
                 health=6,
                 ritual=1,
@@ -96,7 +144,6 @@ tier_3 = [
    CreatureCard(FactionName.ACADEMICS, "Herbert West",
                 attack_name="Reagent Syringe",
                 attack=4,
-                armor=2,
                 magic=4,
                 health=5,
                 ritual=1,
@@ -107,10 +154,9 @@ tier_3 = [
    CreatureCard(FactionName.ACADEMICS, "Keziah Mason",
                 attack_name="Brown Jenkin's Bite",
                 attack=4,
-                armor=2,
                 magic=5,
                 health=4,
-                ritual=2,
+                ritual=1,
                 special=None,
                 cost=3,
                 rarity=Rarity.EPIC),
@@ -118,10 +164,9 @@ tier_3 = [
    CreatureCard(FactionName.ACADEMICS, "Wilbur Whateley",
                 attack_name="Grasping Tentacles",
                 attack=5,
-                armor=2,
                 magic=5,
                 health=5,
-                ritual=3,
+                ritual=1,
                 special=Special.SUMMON,
                 cost=3,
                 rarity=Rarity.EPIC),
@@ -129,61 +174,60 @@ tier_3 = [
 
 # Ritual builders only (5 cards x 1 copy = 5).
 # High magic: hard to kill with spells, but weak against melee.
+# ☩ 2–3 (sänkt från 4–5 2026-11-19): med två ritualkort på brädet nåddes målet 15 på två turer.
+# Figurer ger högst ☩ 1, så att ritualkorten är det som bygger ritualen.
 ritual_cards = [
    RitualCard(FactionName.ACADEMICS, "Lectern of the Madman",
-              armor=0,
               magic=5,
               health=7,
-              ritual=5,
+              ritual=3,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.ACADEMICS, "Sentinel Hill Stone Circle",
-              armor=0,
               magic=4,
               health=8,
-              ritual=5,
+              ritual=3,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.ACADEMICS, "The Angled Attic",
-              armor=0,
               magic=4,
               health=7,
-              ritual=4,
+              ritual=2,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.ACADEMICS, "Circle of Eleven Candles",
-              armor=0,
               magic=5,
               health=7,
-              ritual=4,
+              ritual=2,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.ACADEMICS, "Midnight Seminar",
-              armor=0,
               magic=3,
               health=8,
-              ritual=4,
+              ritual=2,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 ]
 
-# Basic spells (6 cards x 2 copies = 12)
-basic_spells = [
-   SpellCard(FactionName.ACADEMICS, "Book of Sorrows",
-             special=Special.BOOK_OF_SORROWS,
-             cost=1,
-             rarity=Rarity.UNCOMMON,
-             effect=DamageOneEnemy(3)),
+# Book of Sorrows: Academics enda billiga skada, därför två exemplar (1 card x 2 copies = 2)
+book_of_sorrows = SpellCard(FactionName.ACADEMICS, "Book of Sorrows",
+                            special=Special.BOOK_OF_SORROWS,
+                            cost=1,
+                            rarity=Rarity.UNCOMMON,
+                            effect=DamageOneEnemy(3))
 
+# The other basic spells (5 cards x 1 copy = 5). Förut två exemplar var;
+# de andra platserna gick till tier 1.
+basic_spells = [
    SpellCard(FactionName.ACADEMICS, "Scroll of Rituals",
              special=Special.SCROLL_OF_RITUALS,
              cost=1,
@@ -222,7 +266,6 @@ basic_spells = [
 the_unbegotten = CreatureCard(FactionName.ACADEMICS, "The Unbegotten",
                               attack_name="Cold Grasp",
                               attack=2,
-                              armor=2,
                               magic=1,
                               health=5,
                               ritual=0,
@@ -233,7 +276,6 @@ the_unbegotten = CreatureCard(FactionName.ACADEMICS, "The Unbegotten",
 void_wraith = CreatureCard(FactionName.ACADEMICS, "Void Wraith",
                            attack_name="Wail from the Void",
                            attack=1,
-                           armor=0,
                            magic=4,
                            health=3,
                            ritual=0,
@@ -259,7 +301,7 @@ spell_cards = [
              special=Special.CULTES_DES_GOULES,
              cost=2,
              rarity=Rarity.RARE,
-             effect=RemoveArmor()),
+             effect=LowerAttack(3)),
 
    SpellCard(FactionName.ACADEMICS, "Unaussprechlichen Kulten",
              special=Special.UNAUSSPRECHLICHEN_KULTEN,
@@ -335,12 +377,15 @@ spell_cards = [
              effect=DrainHealth(3)),
 ]
 
-# Tier 2-3 and basic spells: two copies each. Ritual cards and forbidden books: one copy each.
-# 10 + 8 + 5 + 12 + 15 = 50 cards, same as the Ghouls.
+# Tier 2-3 and Book of Sorrows: two copies each.
+# Tier 1, the other basic spells, ritual cards and forbidden books: one copy each.
+# 5 + 10 + 8 + 2 + 5 + 5 + 15 = 50 cards, same as the Ghouls.
 academic_cards = []
-for card in tier_2 + tier_3 + basic_spells:
+for card in tier_2 + tier_3 + [book_of_sorrows]:
    academic_cards.append(card)
    academic_cards.append(copy.copy(card))
+academic_cards += tier_1
+academic_cards += basic_spells
 academic_cards += ritual_cards
 academic_cards += spell_cards
 

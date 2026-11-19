@@ -60,17 +60,8 @@ class Attack(Move):
       return f"{player.get_name()}: {self.card.get_name()} attacks {self.target.get_name()}"
 
 
-# En figur med 🪄 magic anfaller med magi i stället för med ⚔️ (räknas som turens anfall).
-class MagicAttack(Move):
-   def execute(self, game):
-      game.magic_attack(self.card, self.target)
-
-   def describe(self, player):
-      return f"{player.get_name()}: {self.card.get_name()} attacks {self.target.get_name()} with magic"
-
-
 # SACRIFICE: en figur offrar sig i stället för att anfalla. Den dör och ger
-# sin ❤️ health och 🛡️ armor till ett annat eget kort (target).
+# sin ❤️ health till ett annat eget kort (target).
 class Sacrifice(Move):
    def execute(self, game):
       game.sacrifice(self.card, self.target)

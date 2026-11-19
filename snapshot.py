@@ -18,10 +18,16 @@ def card_state(card):
       "name": card.get_name(),
       "health": card.get_health(),
       "attack": card.get_attack(),
-      "armor": card.get_armor(),
       "magic": card.get_magic(),
       "statuses": card.statuses(),
    }
+
+
+# Hjälten har samma värden som ett kort, och dessutom armor (bara hjälten har armor)
+def hero_state(hero):
+   state = card_state(hero)
+   state["armor"] = hero.get_armor()
+   return state
 
 
 class Snapshot:
@@ -30,7 +36,7 @@ class Snapshot:
       for player in (game.player1, game.player2):
          hero = player.get_hero()
          self.players[player.get_name()] = {
-            "hero": card_state(hero),
+            "hero": hero_state(hero),
             "ritual": hero.get_ritual(),
             "resource": player.get_resource(),
             "burned": len(player.get_burned()),
@@ -88,14 +94,15 @@ class Snapshot:
 
    # Kortets stats inom hakparentes, till exempel [⚔️ 5 ❤️ 4]
    def stats_text(self, card):
-      return f"[⚔️ {card['attack']} ❤️ {card['health']} 🛡️ {card['armor']}]"
+      return f"[⚔️ {card['attack']} ❤️ {card['health']}]"
 
-   # Ändrade stats och statusar för ett kort eller en hjälte
+   # Ändrade stats och statusar för ett kort eller en hjälte.
+   # Bara hjälten har armor, så den jämförs bara när den finns med.
    def stat_changes(self, before, after):
       lines = []
       icons = {"health": "❤️", "attack": "⚔️", "armor": "🛡️", "magic": "🪄"}
       for stat, icon in icons.items():
-         if before[stat] != after[stat]:
+         if stat in before and before[stat] != after[stat]:
             lines.append(f"{before['name']}: {icon} {before[stat]} → {after[stat]}")
       for status in after["statuses"]:
          if status not in before["statuses"]:

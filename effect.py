@@ -46,7 +46,7 @@ class Effect:
       return self
 
 
-# Gör amount magisk skada på en fiende (målets 🪄 magic tar emot, armor hjälper inte).
+# Gör amount magisk skada på en fiende (målets 🪄 magic tar emot, hjältens armor hjälper inte).
 # include_hero=False betyder att bara fiendens figurer får väljas, inte hjälten.
 class DamageOneEnemy(Effect):
    def __init__(self, amount, include_hero=True):
@@ -122,20 +122,22 @@ class LowerAttack(Effect):
       target.lower_attack(self.amount)
 
 
-# Tar bort all 🛡️ armor från en fientlig figur.
-class RemoveArmor(Effect):
-   def get_targets(self, game):
-      return game.get_opponent().get_army()
+# Den egna hjälten får armor (Bone Ward). Bara hjälten kan ha armor, som i Hearthstone.
+class GainArmor(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
+   def needs_target(self):
+      return False
 
    def apply(self, game, spell, target):
-      target.set_armor(0)
+      game.get_current_player().get_hero().gain_armor(self.amount)
 
 
-# Ger ett eget kort mer av en eller flera stats, för alltid. BuffOwnCard(armor=2) ger +2 armor.
+# Ger ett eget kort mer av en eller flera stats, för alltid. BuffOwnCard(health=3) ger +3 health.
 # ritual_only=True betyder att bara egna ritualkort får väljas.
 class BuffOwnCard(Effect):
-   def __init__(self, armor=0, magic=0, health=0, ritual_only=False):
-      self.armor = armor
+   def __init__(self, magic=0, health=0, ritual_only=False):
       self.magic = magic
       self.health = health
       self.ritual_only = ritual_only
@@ -147,8 +149,6 @@ class BuffOwnCard(Effect):
       return caster.get_army()
 
    def apply(self, game, spell, target):
-      if self.armor:
-         target.repair_armor(self.armor)
       if self.magic:
          target.increase_magic(self.magic)
       if self.health:
@@ -370,7 +370,7 @@ class DamageAllOwnCards(Effect):
 # Fäster en buff (en tillfällig ändring) på ett eller flera mål.
 # Buffen tillhör den som spelar spellen och går ut i början av hens nästa tur,
 # eller i slutet av den här turen om this_turn_only är True.
-# Stat-ändringar är tal: attack=-2 betyder 2 mindre attack, armor=3 betyder 3 mer armor.
+# Stat-ändringar är tal: attack=-2 betyder 2 mindre attack, magic=2 betyder 2 mer magic.
 # Statusar (cannot_attack, guard ...) är True eller False.
 class GiveBuff(Effect):
    # Vem som får buffen
@@ -382,12 +382,11 @@ class GiveBuff(Effect):
    ALL_OWN_RITUAL_CARDS = "all own ritual cards"
    OWN_HERO = "own hero"
 
-   def __init__(self, receiver, attack=0, armor=0, magic=0,
+   def __init__(self, receiver, attack=0, magic=0,
                 cannot_attack=False, cannot_be_attacked=False, guard=False,
                 no_melee_damage=False, ritual_protected=False, this_turn_only=False):
       self.receiver = receiver
       self.attack = attack
-      self.armor = armor
       self.magic = magic
       self.cannot_attack = cannot_attack
       self.cannot_be_attacked = cannot_be_attacked
@@ -426,7 +425,6 @@ class GiveBuff(Effect):
       for receiver in self.receivers(game, target):
          buff = Buff(game.get_current_player(),
                      attack=self.attack,
-                     armor=self.armor,
                      magic=self.magic,
                      cannot_attack=self.cannot_attack,
                      cannot_be_attacked=self.cannot_be_attacked,
