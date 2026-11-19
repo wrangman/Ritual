@@ -10,10 +10,10 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 import copy
-from effect import (DamageOneEnemy, GainResource, DamageAllEnemyCards, HealAllOwnCards,
-                    RemoveArmor, BuffOwnCard, LowerRitual, StealRitual, GainRitual,
+from effect import (DamageOneEnemy, GainResource, DamageAllEnemyCards,
+                    RemoveArmor, LowerRitual, StealRitual, GainRitual,
                     DrawCards, ReturnRandomToHand, LookAtTopCards, DamageOwnHero, Combined,
-                    GiveBuff, ReflectNextAttack)
+                    GiveBuff, ReflectNextAttack, SummonGhost, DrainHealth)
 from faction import Faction
 from card import CreatureCard, RitualCard, SpellCard, Rarity, Special, FactionName
 from hero import Hero, HeroAbility
@@ -217,7 +217,31 @@ basic_spells = [
              effect=GiveBuff(GiveBuff.ENEMY_CARD, attack=-2)),
 ]
 
-# Forbidden books (15 cards x 1 copy = 15). Heavy magic hurts your own cards.
+# Ghosts: creatures that are not in the deck. Spells summon a new copy each time.
+# They give no ritual: they are conjured, not part of the ritual.
+the_unbegotten = CreatureCard(FactionName.ACADEMICS, "The Unbegotten",
+                              attack_name="Cold Grasp",
+                              attack=2,
+                              armor=2,
+                              magic=1,
+                              health=5,
+                              ritual=0,
+                              special=Special.GUARD,
+                              cost=3,
+                              rarity=Rarity.RARE)
+
+void_wraith = CreatureCard(FactionName.ACADEMICS, "Void Wraith",
+                           attack_name="Wail from the Void",
+                           attack=1,
+                           armor=0,
+                           magic=4,
+                           health=3,
+                           ritual=0,
+                           special=None,
+                           cost=3,
+                           rarity=Rarity.RARE)
+
+# Forbidden books (15 cards x 1 copy = 15).
 spell_cards = [
    SpellCard(FactionName.ACADEMICS, "Necronomicon",
              special=Special.NECRONOMICON,
@@ -228,7 +252,7 @@ spell_cards = [
    SpellCard(FactionName.ACADEMICS, "Pnakotic Manuscripts",
              special=Special.PNAKOTIC_MANUSCRIPTS,
              cost=3,
-             rarity=Rarity.RARE,
+             rarity=Rarity.EPIC,
              effect=DamageAllEnemyCards(3)),
 
    SpellCard(FactionName.ACADEMICS, "Cultes des Goules",
@@ -269,9 +293,9 @@ spell_cards = [
 
    SpellCard(FactionName.ACADEMICS, "Psalms of the Void",
              special=Special.PSALMS_OF_THE_VOID,
-             cost=2,
+             cost=3,
              rarity=Rarity.RARE,
-             effect=HealAllOwnCards(2)),
+             effect=SummonGhost(void_wraith, hidden=True)),
 
    SpellCard(FactionName.ACADEMICS, "The King in Yellow",
              special=Special.THE_KING_IN_YELLOW,
@@ -288,8 +312,8 @@ spell_cards = [
    # Spells that protect ritual
    SpellCard(FactionName.ACADEMICS, "Seal of the Black Sun",
              special=Special.SEAL_OF_THE_BLACK_SUN,
-             cost=2,
-             rarity=Rarity.RARE,
+             cost=4,
+             rarity=Rarity.EPIC,
              effect=GiveBuff(GiveBuff.ALL_OWN_RITUAL_CARDS, no_melee_damage=True)),
 
    SpellCard(FactionName.ACADEMICS, "Mirror of Nitocris",
@@ -300,15 +324,15 @@ spell_cards = [
 
    SpellCard(FactionName.ACADEMICS, "Ward of the Unbegotten",
              special=Special.WARD_OF_THE_UNBEGOTTEN,
-             cost=2,
+             cost=3,
              rarity=Rarity.RARE,
-             effect=GiveBuff(GiveBuff.OWN_CARD, guard=True, armor=3)),
+             effect=SummonGhost(the_unbegotten)),
 
    SpellCard(FactionName.ACADEMICS, "Codex of the Eleven Keys",
              special=Special.CODEX_OF_THE_ELEVEN_KEYS,
              cost=2,
              rarity=Rarity.RARE,
-             effect=BuffOwnCard(magic=3, health=3, ritual_only=True)),
+             effect=DrainHealth(3)),
 ]
 
 # Tier 2-3 and basic spells: two copies each. Ritual cards and forbidden books: one copy each.

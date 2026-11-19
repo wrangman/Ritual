@@ -14,6 +14,7 @@ __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
+import copy
 import random
 from card import CreatureCard, Special, magic_damage
 from buff import Buff
@@ -226,6 +227,53 @@ class ReviveRandom(Effect):
       card = random.choice(dead_cards)
       card.restore_full_health()
       caster.revive_card(card)
+
+
+# Trollar fram ett spöke: en figur som inte fanns i leken (en "token", som Mirror Image
+# i Hearthstone). ghost är en förlaga; varje gång spellen spelas skapas en ny kopia,
+# eftersom spöket kan ändras på brädet (skadas, få buffar).
+# hidden=True: spöket kan inte anfallas förrän ens nästa tur (som Stealth i Hearthstone).
+# Är brädet fullt händer ingenting, som för Resurrect.
+class SummonGhost(Effect):
+   def __init__(self, ghost, hidden=False):
+      self.ghost = ghost
+      self.hidden = hidden
+
+   def needs_target(self):
+      return False
+
+   def apply(self, game, spell, target):
+      caster = game.get_current_player()
+      if not caster.has_room_on_board():
+         return
+      ghost = copy.deepcopy(self.ghost)
+      caster.summon(ghost)
+      if self.hidden:
+         ghost.add_buff(Buff(caster, cannot_be_attacked=True))
+
+
+# Dränerar health från ett fiendekort och ger det till ett slumpat eget kort, för alltid.
+# Det är magi, så målets 🪄 magic tar emot som vanligt. Bara det som faktiskt togs ges vidare.
+# Spelaren väljer bara ett mål per spell, därför slumpas mottagaren (som SACRIFICE när
+# kortet dör). Har man inga kort på brädet läker det i stället den egna hjälten (som Drain Life).
+class DrainHealth(Effect):
+   def __init__(self, amount):
+      self.amount = amount
+
+   def get_targets(self, game):
+      return game.get_opponent().get_army()
+
+   def apply(self, game, spell, target):
+      caster = game.get_current_player()
+      drained = min(magic_damage(self.amount, target), target.get_health())
+      target.take_damage(drained)
+      if drained > 0:
+         own_cards = caster.get_army()
+         if own_cards:
+            random.choice(own_cards).increase_health(drained)
+         else:
+            caster.get_hero().restore_health(drained)
+      game.get_opponent().clear_dead_cards()
 
 
 # Ett slumpat kort i den egna gravhögen kommer tillbaka till handen.

@@ -86,7 +86,7 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 ### AI och controllers (byggt 2026-11-18)
 
 - **Vem som väljer är skilt från vad som visas.** Varje `Player` *har* en controller (sammansättning), `Player(name, faction, controller)`. `Player` anropar den aldrig själv, det gör `Game`. Källa: Forge (motor för Magic) har `PlayerController` med `PlayerControllerHuman` och `PlayerControllerAi`.
-- `controller.py`: `Controller` är en abstrakt basklass (`abc`) med `choose_move(game, player, moves)` och `choose_card(game, player, cards)`. `HumanController(ui)` skickar vidare till gränssnittet.
+- `controller.py`: `Controller` är en abstrakt basklass (`abc`) med `choose_move(game, player, moves)`, `choose_card(game, player, cards)` och `choose_mulligan(game, player, cards)`. `HumanController(ui)` skickar vidare till gränssnittet.
 - **Lagliga drag:** `Game.get_legal_moves(player)` räknar ut alla drag; controllern väljer ett. Källa: MetaStone (Hearthstone-simulator) ger `validActions` till spelarens `Behaviour`. Då ligger reglerna på ett ställe, och människor och AI väljer ur samma lista. Dragen är objekt i `move.py` (Command-mönstret): `PlayCard(card, target)`, `Attack(card, target)`, `EndTurn()`, med `execute(game)` och `describe(player)`. Ett drag är komplett (målet ingår), så att AI:n kan prova varje drag. En spell utan tillåtet mål blir inget drag. Figurer blir inget drag när brädet är fullt.
 - **Max 7 kort på brädet (byggt):** `Player.MAX_ARMY = 7`, `has_room_on_board()`. Resurrect (`ReviveRandom`) gör ingenting när brädet är fullt, som i Hearthstone.
 - `Game` visar varje drag med `show_message(move.describe(player))`, så att man ser vad AI:n gör.
@@ -95,7 +95,9 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
   - `SmartAI`: provar varje drag på en kopia av spelet (`Game.copy_for_simulation(move)`, `copy.deepcopy` med `SilentUI`) och betygsätter läget med `evaluate()`. Väljer bästa draget, tills inget drag gör läget bättre (`MIN_GAIN`), då avslutas turen. Principen bakom `GreedyOptimizeMove` i MetaStone. Nya kort kräver ingen ny AI-kod.
   - Betyget bygger på vikterna i `SmartAI.WEIGHTS` (hjältens hälsa, ritual, ☩ på brädet, figurernas stats, Guard, kort i handen, triggers, Seal of Apep, om ens hjälte saknar skydd m.m.). Har motståndaren nått ritualmålet ger det −300: hen vinner i början av sin tur. Vikterna är gissningar; andra vikter ger en annan spelstil (`SmartAI(weights={...})`).
   - Resurs som blir kvar är värd lite (`resource` 0.1), eftersom den försvinner när turen är slut. (Det fanns en sparregel, `saving`, när resursen sparades mellan turer. Den togs bort när resursen blev som mana i Hearthstone.)
-  - Begränsningar: tittar bara ett drag framåt; slumpade effekter provas en gång; spells räknas inte som något att spara till.
+  - Efter ett drag som ger resurs (Trinket, The Silver Key, De Vermis Mysteriis) tittar den ett drag till, eftersom resursen bara är värd det den gör möjligt. Utan det spelades Trinket aldrig. (MetaStones `GreedyOptimizeTurn` söker igenom hela turen; detta är en mindre variant.)
+  - Hotet mot den egna hjälten räknas med varje fiendekorts bästa anfall, ⚔️ eller 🪄 (`CreatureCard.threat_against()`, 0 för ritualkort).
+  - Begränsningar: tittar annars bara ett drag framåt; slumpade effekter provas en gång; spells räknas inte som något att spara till.
 - För att kopieringen ska gå snabbt delas sådant som inte ändras under en match mellan kopiorna (`__deepcopy__` returnerar `self`): effekter, fraktioner och controllers. En SmartAI-match tar ungefär 0,2 sekunder.
 - **Bara människa mot AI (beslutat 2026-11-18).** Människa mot människa är borttaget och ska inte gå längre. `main.py` startar alltid spelaren (`HumanController`) mot `SmartAI`.
 
@@ -133,8 +135,12 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 
 ### Tur (bestämt)
 
-- Spelare 1 börjar. Slantsingling och mulligan väntar till senare.
-- Starthand: 5 kort.
+- Spelare 1 börjar. Slantsingling väntar till senare.
+- Starthand: 3 kort, 4 för den som börjar som tvåa (`Game.STARTING_HAND`), som i Hearthstone. (5 kort till 2026-11-19, ändrat när mulligan byggdes.)
+- **Mulligan (byggt 2026-11-19, användarens beslut, förberett för grafik):** som i Hearthstone ser man sin starthand och byter hur många kort man vill, en gång. De nya korten dras först och de gamla blandas in i leken efteråt, så att man inte får tillbaka samma kort (`Player.mulligan(cards)`). Ordning i `Game.start()`: meddelandet om Trinket → starthänder → mulligan för båda (`Game.mulligan(player)`) → Trinket i handen (efter mulligan, så den inte kan bytas bort).
+  - Valet görs av controllern: `Controller.choose_mulligan(game, player, cards)` returnerar korten som ska bytas. `HumanController` skickar vidare till `ui.choose_mulligan(cards)`; ett `PygameUI` behöver bara en metod med samma namn (till exempel klicka på korten). `TerminalUI` frågar "Replace which cards? (for example 1 3, or Enter to keep all)".
+  - `SmartAI` byter kort som kostar mer än `MULLIGAN_MAX_COST = 3` ("mulligan for a curve", vanligt råd i Hearthstone; gränsen är en gissning). `RandomAI` byter varje kort med 50 % chans.
+- **Trinket (byggt 2026-11-19):** den som börjar som tvåa "got the trinket": ett extra kort i starthanden och kortet Trinket (kostnad 0, +1 resurs en gång, `make_trinket()` i `factions/neutral.py`, ingen fraktion). Källa: The Coin i Hearthstone. Bonusen hör till turordningen, inte fraktionen. Den som började vann 74 % före, 53 % efter (med 5 kort i starthanden), 44 % med 3/4 kort och mulligan.
 - I varje tur, i valfri ordning: **lägg så många kort du har råd med** (se Resursen) och **anfall med varje kort som har legat på brädet sedan förra turen, en gång var** (som i Hearthstone; byggt 2026-11-18). Den gamla regeln "en action per tur" är borttagen.
 - Turen går över när inget mer går att göra, eller när spelaren väljer "0) end turn", till exempel för att spara resurs till ett dyrt kort.
 - Finns inget kort som kan göra en action hoppas den över automatiskt.
@@ -165,12 +171,12 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - **Effekter är egna objekt (sammansättning).** `SpellCard` *har* en effekt, till exempel `DamageOneEnemy`, som gör jobbet med `apply(...)`. Samma effekt kan återanvändas av flera spells. Källa: Fireplace (`play = Hit(TARGET, 6)`) och Forge (`DealDamage`); mönstret Command/Strategy (Gang of Four). Ingen lång `if/elif` över `Special`.
 - **Styrkan i en effekt anges när effekten skapas** (som `Hit(TARGET, 6)` i Fireplace): `DamageOneEnemy(7)`, `DamageAllEnemyCards(3)`, `HealOwnHero(2)`, `HealAllOwnCards(2)`, `LowerAttack(3)`, `LowerRitual(3)`, `StealRitual(3)`, `GainRitual(2)`, `Infect(2)`, `BuffOwnCard(armor=2, magic=2)` och `GiveBuff(..., armor=3)`. Talen är desamma som spellernas gamla 🪄 (Scroll of Rituals: gamla ☩). Ändrar man ett tal ska texten i `Special` ändras också. *(Förut, till 2026-11-19: spells hade 🪄 och ☩, och effekten läste spellens 🪄. Flera spells visade då 🪄 som inte användes, till exempel Terror, Veil of Tiamat och Cultes des Goules.)*
 - En effekt svarar på `needs_target()` och `get_targets(game)`: effekten själv säger vilka mål som är tillåtna. Har en spell inga giltiga mål kan den inte spelas (den betalas inte).
-- Byggda effekter i `effect.py` (grupp A, omedelbara): `DamageOneEnemy(include_hero)`, `DamageAllEnemyCards(own_damage)`, `HealOwnHero`, `HealAllOwnCards`, `LowerAttack`, `RemoveArmor`, `BuffOwnCard(armor, magic, health, ritual_only)`, `LowerRitual`, `StealRitual`, `GainRitual`, `DrawCards(n)`, `ReviveRandom`, `ReturnRandomToHand`, `LookAtTopCards(n)`, `PayWithBlood(n)`, `GainResource(...)` och `Combined(...)` (flera effekter i samma spell, Composite-mönstret; bara den första får ett mål).
+- Byggda effekter i `effect.py` (grupp A, omedelbara): `DamageOneEnemy(include_hero)`, `DamageAllEnemyCards(own_damage)`, `HealOwnHero`, `HealAllOwnCards`, `LowerAttack`, `RemoveArmor`, `BuffOwnCard(armor, magic, health, ritual_only)`, `LowerRitual`, `StealRitual`, `GainRitual`, `DrawCards(n)`, `ReviveRandom`, `ReturnRandomToHand`, `LookAtTopCards(n)`, `PayWithBlood(n)`, `GainResource(...)`, `SummonGhost(ghost, hidden)`, `DrainHealth(n)` och `Combined(...)` (flera effekter i samma spell, Composite-mönstret; bara den första får ett mål).
 - Läkning går aldrig över `max_health` (både kort och hjälte), som i Hearthstone. Återupplivade kort kommer tillbaka med full health.
 - **Buffar (grupp B, byggt):** effekter som varar "until your next turn" eller "this turn" är `Buff`-objekt (`buff.py`) som fästs på ett kort eller en hjälte, som enchantments i Hearthstone, `Buff` i Fireplace och buffar/debuffar i Darkest Dungeon. Kortets egna värden ändras aldrig: `get_attack()`, `get_armor()`, `get_magic()`, `can_attack()`, `has_guard()` osv. räknar in buffarna. När buffen går ut tas den bara bort. (Command-mönstret med `undo` valdes bort: `undo` blir fel när ett värde stannat på 0.)
   - `CreatureCard` och `Hero` *har* en `BuffList` (sammansättning), så logiken står på ett ställe.
   - En buff tillhör spelaren som lade den. "Until your next turn" går ut i början av den spelarens nästa tur, "this turn" i slutet av turen (`Game.remove_expired_buffs`). Kort som dör tappar sina buffar.
-  - Effekten `GiveBuff(receiver, ...)` ger buffar: Terror, Veil of Tiamat, Seal of Apep, Kiss of Lilith, Whispered Hex, Scroll of Dzyan, Rite of the Thirteenth Hour, The King in Yellow, Seal of the Black Sun, Ward of the Unbegotten.
+  - Effekten `GiveBuff(receiver, ...)` ger buffar: Terror, Veil of Tiamat, Seal of Apep, Kiss of Lilith, Whispered Hex, Scroll of Dzyan, Rite of the Thirteenth Hour, The King in Yellow, Seal of the Black Sun.
   - Ett kort som är dolt (Veil of Tiamat) kan inte anfallas av figurer och skyddar inte heller hjälten. Spells kan fortfarande träffa det.
   - `Faction` skapar kort och hjältar med `copy.deepcopy`, så att varje kopia har en egen lista med buffar.
 - **Triggers (grupp C, byggt):** effekter som väntar på att något ska hända är `Trigger`-objekt (`trigger.py`), Observer-mönstret (Gang of Four), som Secrets och gift i Hearthstone och event-lyssnare i Fireplace. `Game` har en lista med triggers och meddelar dem `before_attack` (kan ta hand om anfallet), `after_attack` och `at_turn_start`. En trigger som har gjort sitt markerar sig som förbrukad och tas bort.
@@ -178,6 +184,12 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
   - **Mirror of Nitocris:** nästa melee-anfall mot det valda egna kortet träffar anfallaren i stället (engångs).
   - **Curse of Choronzon:** nästa fiendekort som anfaller ett av dina ritualkort tar samma skada som det gjorde (engångs).
   - Triggers gäller bara melee-anfall (`Game.attack`), inte spells.
+- **Spöken och dränering (byggt 2026-11-19, användarens idé):** Academics ska kännas som magiker med många spells av tre sorter: spells som skapar spöken, spells som anfaller och spells som dränerar. Tre skydds-spells gjordes om:
+  - **Ward of the Unbegotten** (3): skapar spöket *The Unbegotten* [⚔️ 2 🛡️ 2 🪄 1 ❤️ 5, Guard].
+  - **Psalms of the Void** (3): skapar *Void Wraith* [⚔️ 1 🛡️ 0 🪄 4 ❤️ 3], som inte kan anfallas förrän ens nästa tur (som Stealth i Hearthstone, samma buff som Veil of Tiamat).
+  - **Codex of the Eleven Keys** (2): dränerar 3 health (magi, 🪄 tar emot) från ett fiendekort och ger det för alltid till ett slumpat eget kort, eller läker hjälten om brädet är tomt.
+  - Spöken är *tokens* (som Mirror Image i Hearthstone): förlagorna ligger i `academics.py` men inte i leken, och `SummonGhost` skapar en ny kopia varje gång. De ger ingen ☩. Ett spöke med Guard får inte samtidigt vara dolt, eftersom dolda kort inte skyddar.
+  - `Player.summon(card)` lägger en figur på brädet utan att den spelas från handen (används av återupplivning, SUMMON och spöken).
 - **Alla spells har en effekt.** Det tillfälliga blocket som bytte ut spells utan effekt är borttaget.
 - Man kan ångra medan man väljer (kort eller mål). När man har bekräftat är spellen kastad och kan inte tas tillbaka. *Ångra är inte byggt: i dag går det inte att backa ur målvalet.*
 - Exempel: tier 5 hos Ghouls (Resurrect, Plague, Infect, Ruin m.fl.).
@@ -189,7 +201,8 @@ Fyra klasser, eftersom figurer, ritualkort och spells beter sig olika (figurer s
 - **Mål (bestämt, som i Hearthstone):** spelaren väljer högst **ett** mål per spell. Allt annat sker automatiskt eller slumpat.
   - "One enemy" (fiendens figur eller hjälte): Book of Sorrows, Necrotic Bolt, Necronomicon. Texterna ska säga "one enemy".
   - Bara fiendens figurer: Infect, Drain Life, Wither, Terror, Whispered Hex, Cultes des Goules. Area-spells (Plague, Pnakotic Manuscripts) träffar bara figurer, inte hjälten.
-  - Eget kort: Bone Ward, Kiss of Lilith, Ward of the Unbegotten, Mirror of Nitocris. Eget ritualkort: Veil of Tiamat, Scales of Leviathan, Codex of the Eleven Keys.
+  - Bara fiendens figurer gäller också Codex of the Eleven Keys (dränerar).
+  - Eget kort: Bone Ward, Kiss of Lilith, Mirror of Nitocris. Eget ritualkort: Veil of Tiamat, Scales of Leviathan.
   - Inget mål: resten (gäller alla kort, spelaren eller ritualen).
   - Drain Life läker automatiskt den egna hjälten (som Drain Life i Hearthstone).
   - Resurrect och Book of the Nameless Dead hämtar ett **slumpat** kort ur gravhögen (som Resurrect i Hearthstone).
@@ -249,7 +262,7 @@ Riktning som diskuterats:
 - Hjälteförmågorna Feast of Graves och The Eleventh Seal.
 - Visa i terminalen att ett kort är smittat (Infect) eller att Mirror/Curse väntar.
 - Visa motståndarens bräde under ens egen tur, och en text efter anfall (hur mycket skada, vilket kort som dog).
-- Mulligan och slantsingling.
+- Slantsingling (mulligan är byggd 2026-11-19).
 - Shoggoths och The Deep Ones (bara Academics och Ghouls är byggda).
 
 **Byggt 2026-11-18:** ☩ sjunker när ett kort dör, ritualen avgörs efter motståndarens svar, Stress. Kontrollerat med 300 matcher med slumpbotar (inga krascher, inget hängde sig; ritualseger 231, hjälte dödad 69; Academics 102, Ghouls 198) och 13 riktade regelkontroller. Stress uppstår inte i vanliga matcher (leken på 50 kort tar inte slut), bara i specialfallet med tomma lekar, där spelet nu tar slut. Testskripten ligger i scratchpad och finns inte i projektet.
@@ -264,4 +277,4 @@ Riktning som diskuterats:
 
 **AI-motståndare före grafik (beslutat 2026-11-18).** Användaren vill inte bygga om gränssnittet efteråt. Idag frågar `Game` samma `ui` om valen för båda spelarna, så en AI kräver att "vem som väljer" skiljs från "vad som visas".
 
-**Väntar till grafiken (beslutat 2026-11-18):** mulligan (svårt att få känsla för i text). Tre visningsfel som syntes i speltest: (1) ⚔️ döljs när den är 0, så en figur vars attack sänkts till 0 (Wither) ser ut att sakna värdet; figurer ska alltid visa ⚔️, bara ritualkort ska dölja den. (2) Rapporten efter ett anfall säger inte när skadan blev 0 (den visar bara det som ändrades); den ska säga skada åt båda håll, t.ex. "deals 0 damage (⚔️ 0 vs 🛡️ 1), hits back for 1". (3) "--- Joe's turn ---" skrivs ut efter varje drag, så det ser ut som en ny tur. Ångra i målvalet: inte nu. *(Text efter anfall stod här först, men det gick inte att förstå spelet utan den, så den är byggd, se Terminalen.)*
+**Väntar till grafiken (beslutat 2026-11-18):** *(mulligan stod här, men byggdes 2026-11-19 i terminalen och förbereddes för grafik, användarens beslut.)* Tre visningsfel som syntes i speltest: (1) ⚔️ döljs när den är 0, så en figur vars attack sänkts till 0 (Wither) ser ut att sakna värdet; figurer ska alltid visa ⚔️, bara ritualkort ska dölja den. (2) Rapporten efter ett anfall säger inte när skadan blev 0 (den visar bara det som ändrades); den ska säga skada åt båda håll, t.ex. "deals 0 damage (⚔️ 0 vs 🛡️ 1), hits back for 1". (3) "--- Joe's turn ---" skrivs ut efter varje drag, så det ser ut som en ny tur. Ångra i målvalet: inte nu. *(Text efter anfall stod här först, men det gick inte att förstå spelet utan den, så den är byggd, se Terminalen.)*

@@ -31,6 +31,9 @@ class EndTurnController(Controller):
    def choose_card(self, game, player, cards):
       return cards[0]
 
+   def choose_mulligan(self, game, player, cards):
+      return []   # behåller alltid starthanden
+
 
 # Academics (spelare 1) mot Ghouls (spelare 2). Samma seed varje gång,
 # så att testerna blir likadana varje körning.

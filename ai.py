@@ -45,6 +45,14 @@ class RandomAI(Controller):
    def choose_card(self, game, player, cards):
       return random.choice(cards)
 
+   # Byter varje kort med 50 % chans
+   def choose_mulligan(self, game, player, cards):
+      replace = []
+      for card in cards:
+         if random.random() < 0.5:
+            replace.append(card)
+      return replace
+
 
 # Provar varje drag på en kopia av spelet och väljer det som ger bäst läge efteråt.
 # AI:n tittar bara ett drag framåt: den gör det bästa draget, sedan det bästa igen,
@@ -70,12 +78,15 @@ class SmartAI(Controller):
       "overload": 0.5,              # per resurs som är lånad från nästa tur
       "trigger": 2.0,               # per trigger som väntar (Infect, Mirror, Curse)
       "ritual_protection": 3.0,     # ritualen kan inte sänkas (Seal of Apep)
-      "exposed_hero": 0.5,          # per ⚔️ hos motståndaren när min hjälte saknar skydd
+      "exposed_hero": 0.5,          # per skada motståndarens armé kan göra när min hjälte saknar skydd
    }
 
    # Ett drag måste göra läget minst så här mycket bättre, annars avslutar AI:n turen.
    # Då gör den inga meningslösa drag (till exempel ett anfall som gör 0 skada).
    MIN_GAIN = 0.01
+
+   # Kort som kostar mer än så här byts bort i mulligan. En gissning, som vikterna.
+   MULLIGAN_MAX_COST = 3
 
    def __init__(self, weights=None):
       self.weights = dict(self.WEIGHTS)
@@ -101,12 +112,34 @@ class SmartAI(Controller):
    # provas en gång, så betyget blir en uppskattning.
    def score_move(self, game, move):
       game_copy, move_copy = game.copy_for_simulation(move)
+      player = game_copy.get_current_player()
+      resource_before = player.get_resource()
       move_copy.execute(game_copy)
-      return self.evaluate(game_copy, game_copy.get_current_player())
+      score = self.evaluate(game_copy, player)
+
+      # Ett drag som ger resurs (Trinket, The Silver Key) är inte värt något i sig,
+      # utan värt det man kan göra med resursen. Med bara ett drag framåt skulle AI:n
+      # aldrig spela sådana kort. Därför tittar den ett drag till och tar det bästa.
+      if player.get_resource() > resource_before and not game_copy.is_over():
+         for next_move in game_copy.get_legal_moves(player):
+            if not next_move.ends_turn():
+               score = max(score, self.score_move(game_copy, next_move))
+
+      return score
 
    # Forbidden Codex: ta det dyraste kortet (dyra kort är oftast starkast)
    def choose_card(self, game, player, cards):
       return max(cards, key=lambda card: card.get_cost())
+
+   # Mulligan: byt kort som är för dyra för de första turerna (resursen är 1, 2, 3 ...).
+   # Utan billiga kort gör man ingenting i början. Det är ett vanligt råd i Hearthstone
+   # ("mulligan for a curve").
+   def choose_mulligan(self, game, player, cards):
+      replace = []
+      for card in cards:
+         if card.get_cost() > self.MULLIGAN_MAX_COST:
+            replace.append(card)
+      return replace
 
 
    # Betygsättning
@@ -135,11 +168,14 @@ class SmartAI(Controller):
          score += w["own_ritual_reached"]
 
       # Kan min hjälte anfallas direkt (inga kort som skyddar)? Då är motståndarens armé ett hot.
-      if player.get_hero() in player.get_targets():
-         enemy_attack = 0
+      # Varje kort räknar själv ut sitt bästa anfall (⚔️ eller 🪄), så AI:n behöver
+      # inte veta vilken sorts kort det är (polymorfism).
+      hero = player.get_hero()
+      if hero in player.get_targets():
+         threat = 0
          for card in opponent.get_army():
-            enemy_attack += card.get_attack()
-         score -= w["exposed_hero"] * enemy_attack
+            threat += card.threat_against(hero)
+         score -= w["exposed_hero"] * threat
 
       return score
 

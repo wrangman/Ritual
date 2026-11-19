@@ -37,6 +37,7 @@ class Special(Enum):
    # Alla fraktioner
    GUARD = "Enemies must attack this card first"
    SUMMON = "When played: summons a random creature from your deck"
+   TRINKET = "Gain 1 resource this turn"
 
    # Ghouls, figurer
    DEVOUR = "When played: eats a dead creature in your graveyard and gains its attack and health"
@@ -82,15 +83,15 @@ class Special(Enum):
    RLYEH_TEXT = "Draw two cards"
    SCROLL_OF_DZYAN = "All your cards get +2 magic until your next turn"
    RITE_OF_THE_THIRTEENTH_HOUR = "All your cards get +2 attack this turn"
-   PSALMS_OF_THE_VOID = "Restores 2 health to all your cards"
+   PSALMS_OF_THE_VOID = "Summons a Void Wraith that cannot be attacked until your next turn"
    THE_KING_IN_YELLOW = "No enemy card can attack next turn"
    BOOK_OF_THE_NAMELESS_DEAD = "Returns a random card from your graveyard to your hand"
 
    # Academics, spells som skyddar ritual
    SEAL_OF_THE_BLACK_SUN = "Your ritual cards take no melee damage until your next turn"
    MIRROR_OF_NITOCRIS = "The next melee attack on one of your cards hits the attacker instead"
-   WARD_OF_THE_UNBEGOTTEN = "One of your cards gets Guard and +3 armor until your next turn"
-   CODEX_OF_THE_ELEVEN_KEYS = "One of your ritual cards gets +3 magic and +3 health"
+   WARD_OF_THE_UNBEGOTTEN = "Summons The Unbegotten, a ghost with Guard"
+   CODEX_OF_THE_ELEVEN_KEYS = "Drains 3 health from an enemy card and gives it to a random card of yours"
 
 
 # Magisk skada, för både spells och figurers magiska anfall: styrkan minus målets 🪄 magic,
@@ -323,6 +324,15 @@ class CreatureCard(Card):
    def magic_counter_damage_against(self, attacker):
       return self.magic_damage_against(attacker)
 
+   # Hur mycket skada kortet kan göra på target med sitt bästa anfall (⚔️ eller 🪄).
+   # AI:n använder det för att bedöma hotet under ägarens nästa tur. Väntetur räknas
+   # inte, eftersom kortet hinner bli redo till dess. Terror och The King in Yellow
+   # räknas, eftersom de varar till nästa tur för den som lade dem.
+   def threat_against(self, target):
+      if self.buffs.cannot_attack():
+         return 0
+      return max(self.damage_against(target), self.magic_damage_against(target))
+
 
    # Get methods
 
@@ -404,6 +414,10 @@ class RitualCard(CreatureCard):
    # Ritualkort slåss inte. Mot melee slår de inte tillbaka eftersom de har ⚔️ 0,
    # men många har hög 🪄 magic (den skyddar mot spells), så mot magi måste det sägas här.
    def magic_counter_damage_against(self, attacker):
+      return 0
+
+   # Ritualkort anfaller aldrig, trots hög 🪄 magic, så de är inget hot.
+   def threat_against(self, target):
       return 0
 
 

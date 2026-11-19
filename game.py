@@ -13,9 +13,12 @@ from move import PlayCard, Attack, MagicAttack, Sacrifice, EndTurn
 from silent_ui import SilentUI
 from snapshot import Snapshot
 from effect import creature_ability
+from factions.neutral import make_trinket
 
 
 class Game:
+   STARTING_HAND = 3   # kort i starthanden för den som börjar (tvåan får ett till), som i Hearthstone
+
    # ui visar spelet, till exempel en TerminalUI (eller SilentUI när ingen tittar).
    # Valen gör varje spelares controller (människa eller AI), inte ui.
    # Game vet inte om det är terminal eller grafik, bara att ui har samma metoder.
@@ -27,9 +30,27 @@ class Game:
       self.triggers = []   # effekter som väntar på att något ska hända (Infect, Mirror of Nitocris ...)
       self.turn_count = 0  # hur många turer som har spelats (för statistik i simuleringar)
 
+   # Som i Hearthstone: starthand, mulligan och sedan Trinket.
    def start(self):
-      self.player1.draw_cards(5)
-      self.player2.draw_cards(5)
+      # Den som börjar har ett försprång: hen får resurs och ritual en tur före.
+      # Därför får den som börjar som tvåa ett extra kort och en Trinket (+1 resurs en gång),
+      # som The Coin i Hearthstone. Bonusen hör till turordningen, inte till fraktionen.
+      # Meddelandet kommer först, så att man vet sin plats när man väljer i mulligan.
+      self.ui.show_message(f"{self.player2.get_name()} got the trinket and plays second.")
+      self.player1.draw_cards(self.STARTING_HAND)
+      self.player2.draw_cards(self.STARTING_HAND + 1)
+
+      self.mulligan(self.player1)
+      self.mulligan(self.player2)
+
+      # Trinket ges efter mulligan, så att den inte kan bytas bort
+      self.player2.add_to_hand(make_trinket())
+
+   # Spelarens controller (människa eller AI) väljer vilka kort som ska bytas
+   def mulligan(self, player):
+      cards = player.get_controller().choose_mulligan(self, player, player.get_hand())
+      player.mulligan(cards)
+      self.ui.show_message(f"{player.get_name()} replaces {len(cards)} card(s).")
 
    # En tur: spelaren lägger så många kort hen har råd med och anfaller med varje kort
    # som har legat sedan förra turen (en gång var), i valfri ordning.

@@ -331,6 +331,23 @@ class TerminalUI:
             return targets[int(answer) - 1]
          print("Not a valid choice.")
 
+   # Mulligan: visar starthanden och frågar vilka kort som ska bytas, till exempel "1 3".
+   # Returnerar en lista med korten (tom lista = behåll alla). Ett grafiskt gränssnitt
+   # ska ha en metod med samma namn som gör samma sak, till exempel genom att klicka på korten.
+   def choose_mulligan(self, cards):
+      lines = []
+      for card in cards:
+         lines.append(f"({card.get_cost()}) {self.colored(card)}{self.card_text(card)}")
+      print("Your starting hand:")
+      print(self.numbered(lines))
+
+      while True:
+         answers = input("Replace which cards? (for example 1 3, or Enter to keep all): ").split()
+         if all(answer.isdigit() and 1 <= int(answer) <= len(cards) for answer in answers):
+            numbers = sorted(set(int(answer) for answer in answers))   # set: samma kort bara en gång
+            return [cards[number - 1] for number in numbers]
+         print("Not a valid choice.")
+
    # Visar några kort (till exempel de översta i leken) och låter spelaren ta ett. Returnerar kortet.
    def choose_card(self, cards):
       lines = []

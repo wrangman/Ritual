@@ -116,8 +116,7 @@ class Player:
    # Ett kort återupplivas tillaka till armén
    def revive_card(self, card):
       self.graveyard.remove(card)
-      self.army.append(card)
-      card.enter_board()   # som i Hearthstone: ett återupplivat kort måste också vänta en tur
+      self.summon(card)   # som i Hearthstone: ett återupplivat kort måste också vänta en tur
 
    # Ett dött kort äts upp (DEVOUR): det försvinner ur gravhögen för gott,
    # så det kan inte heller återupplivas
@@ -127,6 +126,11 @@ class Player:
    # Ett kort ur leken läggs direkt på brädet (SUMMON). Det måste vänta en tur, som alla nya kort.
    def summon_from_deck(self, card):
       self.deck.remove(card)
+      self.summon(card)
+
+   # En figur kommer ut på brädet utan att spelas från handen: återupplivad, ur leken
+   # eller ett spöke som en spell trollar fram. Alla nya kort måste vänta en tur innan de anfaller.
+   def summon(self, card):
       self.army.append(card)
       card.enter_board()
 
@@ -146,12 +150,16 @@ class Player:
    def return_to_deck_bottom(self, card):
       self.deck.put_on_bottom(card)
 
-   # Mulligan: "jag vill inte ha det här kortet". Ett nytt kort dras, det gamla läggs sist i leken.
-   #FIXME: ska kunna slänga alla kort eller bara två?
-   def mulligan(self, card):
-      self.hand.remove(card)
-      self.draw_cards()
-      self.deck.put_on_bottom(card)
+   # Mulligan (som i Hearthstone): "jag vill inte ha de här korten". Man får byta hur många
+   # man vill, en gång. De nya korten dras först och de gamla blandas in efteråt,
+   # så att man inte kan få tillbaka samma kort.
+   def mulligan(self, cards):
+      for card in cards:
+         self.hand.remove(card)
+      self.draw_cards(len(cards))
+      for card in cards:
+         self.deck.add_card(card)
+      self.deck.shuffle()
       
    # Vinstvillkor som gäller spelaren själv.
    # "Mest ritual" kräver att två spelare jämförs och avgörs därför av spelet, inte här.

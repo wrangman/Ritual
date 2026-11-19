@@ -6,19 +6,23 @@ BALANS
 - Ritualtakten är för snabb. Ghouls bygger ca 10 ☩ per tur (t.ex. Forbidden Painting 5 + Choir 4 + Charnel Priest 1),
   och Academics har inget som hinner stoppa det. Förslag att titta på: högre ritualmål, mindre ☩ på ritualkorten,
   mer ❤️ på dem eller fler sätt att sänka ritual.
-- Den som börjar vinner 75 % (var 60 % innan magiskt anfall). Förslag: den som börjar andra får något extra,
-  som myntet i Hearthstone (extra kort eller +1 resurs en gång).
-
-AI (ai.py)
-- AI:n räknar bara motståndarens ⚔️ när den bedömer hotet mot sin hjälte ("exposed_hero"), inte 🪄 (magiska anfall).
-- AI:n räknar inte med att SACRIFICE-kort ger sin styrka när de dör, så den är lite för rädd att förlora dem.
+- Academics vinner 68 % (63 % sedan AI:n lärde sig spela kort som ger resurs, sedan 68 % med spökena).
+  Användarens idé: färre/svagare ritualkort.
+- Den som börjar vinner nu bara 44 % (3/4 kort i starthanden + mulligan + Trinket). Tvåan har alltså fått
+  lite för mycket. Förslag att prova: ta bort extrakortet eller Trinket, en sak i taget.
 
 IDÉER SOM VÄNTAR
 - Spells som ger ritual (t.ex. Psalms of the Void, The King in Yellow). Vänta tills balansen ovan är fixad.
   Byggs i så fall med Combined(..., GainRitual(n)) och talet skrivs i kortets text.
 
+RÄKNA RADER KOD (bara .py-filer, inga tomma rader) – kör i projektmappen
+- Mac (Terminal):
+  find . -name "*.py" -exec cat {} + | grep -cv '^[[:space:]]*$'
+- Windows (PowerShell, standard i VS Code):
+  (Get-ChildItem -Recurse -Filter *.py | Get-Content | Where-Object { $_.Trim() -ne "" }).Count
+
 KÖR SIMULERING EFTER VARJE BALANSÄNDRING
-- python3 simulate.py 200 --seed 1   (senast: Academics 53 %, Ghouls 47 %)
+- python3 simulate.py 200 --seed 1   (senast: Academics 68 %, Ghouls 32 %, den som började vann 44 %)
 
 GJORT 2026-11-19 (inte committat än)
 - Magiskt anfall för figurer med 🪄 (🪄 mot 🪄, armor hjälper inte, målet slår tillbaka med magi).
@@ -26,3 +30,14 @@ GJORT 2026-11-19 (inte committat än)
 - SACRIFICE ger sin styrka även när kortet dör på annat sätt (till ett slumpat eget kort).
 - Korttexten (↳) visas i ljusgrått.
 - Necronomicon och The King in Yellow kostar 4.
+- AI:n räknar hotet mot sin hjälte med varje fiendekorts bästa anfall, ⚔️ eller 🪄 (CreatureCard.threat_against).
+- SACRIFICE i AI:n behövde ingen ändring: AI:n provar draget på en kopia med samma regler,
+  så när kortet dör där syns styrkan redan hos kortet som fick den.
+- Den som börjar som tvåa "got the trinket": ett extra kort i starthanden och Trinket (kostnad 0, +1 resurs),
+  som The Coin i Hearthstone (factions/neutral.py). Den som började vann 74 % före, 53 % efter.
+- AI:n tittar ett drag till efter ett drag som ger resurs, annars spelade den aldrig Trinket (0 av 60 matcher).
+- Spöken och dränering för Academics: Ward of the Unbegotten och Psalms of the Void skapar spöken,
+  Codex of the Eleven Keys dränerar health. (Tester för SummonGhost och DrainHealth saknas.)
+- Mulligan, som i Hearthstone: starthand 3 kort (tvåan 4), byt hur många kort man vill en gång.
+  Valet går via controllern (choose_mulligan), så PygameUI behöver bara en metod med samma namn.
+  (Tester för mulligan saknas.)

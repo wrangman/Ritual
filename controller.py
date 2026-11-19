@@ -30,6 +30,12 @@ class Controller(ABC):
    def choose_card(self, game, player, cards):
       pass
 
+   # Mulligan: vilka av korten i starthanden ska bytas? Returnerar en lista
+   # med de korten (tom lista = behåll alla). Game gör själva bytet.
+   @abstractmethod
+   def choose_mulligan(self, game, player, cards):
+      pass
+
    # En controller har inget eget tillstånd som ändras under matchen, så när AI:n
    # kopierar spelet för att prova ett drag kan kopian dela samma controller.
    def __deepcopy__(self, memo):
@@ -47,3 +53,6 @@ class HumanController(Controller):
 
    def choose_card(self, game, player, cards):
       return self.ui.choose_card(cards)
+
+   def choose_mulligan(self, game, player, cards):
+      return self.ui.choose_mulligan(cards)
