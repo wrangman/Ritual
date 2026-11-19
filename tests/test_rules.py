@@ -266,25 +266,27 @@ class TestCreatureAbilities(unittest.TestCase):
       self.ghouls.resource = 10
 
    def test_devour_eats_a_dead_card_and_gains_its_stats(self):
-      dead = take_from_deck(self.ghouls, "Ossuary Keeper")   # ⚔️ 4 ❤️ 3
+      dead = take_from_deck(self.ghouls, "Ossuary Keeper")
       self.ghouls.graveyard.append(dead)
-      eater = take_from_deck(self.ghouls, "Catacomb Tyrant")  # ⚔️ 5 ❤️ 6, DEVOUR
+      eater = take_from_deck(self.ghouls, "Catacomb Tyrant")  # DEVOUR
       self.ghouls.hand.append(eater)
+      attack, health = eater.get_attack(), eater.get_health()
       moves = [m for m in self.game.get_legal_moves(self.ghouls) if m.get_card() is eater]
       self.assertEqual([m.get_target() for m in moves], [dead])
       moves[0].execute(self.game)
-      self.assertEqual(eater.get_attack(), 5 + 4)
-      self.assertEqual(eater.get_health(), 6 + 3)
+      self.assertEqual(eater.get_attack(), attack + dead.get_attack())
+      self.assertEqual(eater.get_health(), health + dead.get_max_health())
       self.assertNotIn(dead, self.ghouls.get_graveyard())   # uppäten, kan inte återupplivas
 
    def test_devour_with_empty_graveyard_still_plays_the_card(self):
       eater = take_from_deck(self.ghouls, "Catacomb Tyrant")
       self.ghouls.hand.append(eater)
+      attack = eater.get_attack()
       moves = [m for m in self.game.get_legal_moves(self.ghouls) if m.get_card() is eater]
       self.assertEqual(len(moves), 1)
       moves[0].execute(self.game)
       self.assertIn(eater, self.ghouls.get_army())
-      self.assertEqual(eater.get_attack(), 5)
+      self.assertEqual(eater.get_attack(), attack)   # inget att äta, så inget växer
 
    def test_study_draws_a_card(self):
       self.game.current_player = self.academics

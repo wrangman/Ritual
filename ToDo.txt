@@ -10,7 +10,16 @@ BALANS
   Matcherna blev längre (16,6 → 19,1 turer), ritualseger 84 % → 66 %, men Academics 26 %.
   Ritualtakten var alltså inte orsaken till att Academics förlorar. Ghouls vinner nu oftare genom strid.
 - Armor borttagen från figurer (bara hjälten har armor, som nöts 1 per träff): Academics 50 %, Ghouls 50 %.
-- NÄSTA: budget per kostnad, som "vanilla test" i Hearthstone, och räkna om alla kort med den.
+- Budget per kostnad byggd (budget.py, 5 poäng per kostnad), alla figurer omräknade: Academics 35 %, Ghouls 65 %.
+- Steg 1: DEVOUR 3 → 5 poäng (Tyrant 4/4, Butcher 3/4): Academics 37 %.
+- Steg 2 (experiment, inte ändrat): Academics med 30 figurer / 15 spells vann 56 %. Figurer är värda mer än spells.
+- Steg 3: spellbudget byggd (SpellBudget i budget.py). Nästan alla spells ligger under budgeten, i båda fraktionerna.
+  Academics har 22 spells mot Ghouls 15, därför förlorar de. Se CLAUDE.md för alla siffror och värden.
+- NÄSTA: förslag för varje spell så att den hamnar på budgeten (höj talet eller sänk kostnaden), båda fraktionerna.
+  Sedan simulering. Om det inte räcker: tänk om kring Academics spells (användarens beslut).
+- RÄTTA: STUDY kostar 2 poäng men ett kort är värt 4; SUMMON kostar 3 men en figur på brädet är värd ~10.
+  Wilbur Whateley, Restricted Stacks Librarian och Night Archivist är alltså för billiga.
+- Ritualkort har ingen egen budget än.
 - Den som börjar vinner nu bara 44 % (3/4 kort i starthanden + mulligan + Trinket). Tvåan har alltså fått
   lite för mycket. Förslag att prova: ta bort extrakortet eller Trinket, en sak i taget.
 
@@ -25,7 +34,8 @@ RÄKNA RADER KOD (bara .py-filer, inga tomma rader) – kör i projektmappen
   (Get-ChildItem -Recurse -Filter *.py | Get-Content | Where-Object { $_.Trim() -ne "" }).Count
 
 KÖR SIMULERING EFTER VARJE BALANSÄNDRING
-- python3 simulate.py 200 --seed 1   (senast: Academics 50 %, Ghouls 50 %, den som började vann 44 %)
+- python3 simulate.py 200 --seed 1   (senast: Academics 37 %, Ghouls 63 %, den som började vann 42 %)
+- python3 budget.py   visar alla kort mot budgeten (figurer, ritualkort, spells)
 
 GJORT 2026-11-19 (inte committat än)
 - Magiskt anfall för figurer med 🪄 (🪄 mot 🪄, armor hjälper inte, målet slår tillbaka med magi).
