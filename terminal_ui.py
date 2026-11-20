@@ -351,6 +351,22 @@ class TerminalUI:
             return [cards[number - 1] for number in numbers]
          print("Not a valid choice.")
 
+   # Före matchen: låter spelaren välja fraktion. Returnerar fraktionen.
+   # (Inte en del av gränssnittet som Game använder: main.py frågar innan spelet skapas.)
+   def choose_faction(self, factions):
+      lines = []
+      for faction in factions:
+         creature_color, _ = FACTION_COLORS[faction.get_name()]
+         lines.append(f"{creature_color}{faction.get_name().value}{RESET}, hero {faction.get_hero().get_name()}")
+      print("Choose your faction:")
+      print(self.numbered(lines))
+
+      while True:
+         answer = input(f"Choose a faction 1-{len(factions)}: ").strip()
+         if answer.isdigit() and 1 <= int(answer) <= len(factions):
+            return factions[int(answer) - 1]
+         print("Not a valid choice.")
+
    # Visar några kort (till exempel de översta i leken) och låter spelaren ta ett. Returnerar kortet.
    def choose_card(self, cards):
       lines = []

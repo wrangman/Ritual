@@ -6,8 +6,10 @@ __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
+import random
 import unittest
 from buff import Buff
+from game import random_order
 from move import Sacrifice
 from event import RitualNearlyComplete
 from tests.helpers import (new_game, take_from_deck, take_ritual_card, take_creatures,
@@ -80,6 +82,13 @@ class TestRitualIsDecidedAfterOpponentsTurn(unittest.TestCase):
       game.play_turn()
       self.assertTrue(any(isinstance(event, RitualNearlyComplete) for event in game.ui.events))
       self.assertFalse(game.is_over())
+
+
+class TestCoinFlip(unittest.TestCase):
+   def test_both_players_get_to_start_sometimes(self):
+      random.seed(1)
+      orders = {random_order("A", "B") for _ in range(50)}
+      self.assertEqual(orders, {("A", "B"), ("B", "A")})
 
 
 class TestStress(unittest.TestCase):

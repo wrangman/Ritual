@@ -30,9 +30,10 @@ GRAFIK
 - Gjort 2026-11-20: PygameUI (gui/, starta med python3 main_gui.py). Porträtt med stats på brädet,
   hjältar till höger, ikonlista med senaste drag, ruta vid din tur, linje vid anfall, siffror som flyger,
   kort som tonar bort, konsol på Tab. Terminalen (main.py) finns kvar.
-- 44 kort saknar bild (se python-kommandot i CLAUDE.md eller fråga Claude om listan).
-- NÄSTA: provspela och se vad som känns fel. Sedan bättre animationer (kortet åker fram vid anfall,
-  skakning vid träff, porträttet faller ur kortet när det spelas).
+- Gjort 2026-11-20: animationer. Handen som solfjäder, kort som glider, porträttet faller ur kortet,
+  anfallaren rusar fram, målet skakar och blinkar rött, pulserande ram. Alla kort har bild
+  (figurer: tierbild; spells: lånad passande bild).
+- NÄSTA: provspela med python3 main_gui.py och skriv ner vad som känns fel.
 
 IDÉER SOM VÄNTAR
 - Spells som ger ritual (t.ex. Psalms of the Void, The King in Yellow). Vänta tills balansen ovan är fixad.

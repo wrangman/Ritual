@@ -13,7 +13,9 @@ __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
+import math
 import pygame
+from gui.motion import Placement
 
 SCREEN_SIZE = (1920, 1080)
 
@@ -22,18 +24,26 @@ class Layout:
    BOARD_CENTER_X = 860          # mitten av spelplanen (hjältarna tar plats till höger)
 
    PORTRAIT = 150                # ett porträtt på brädet är 150 x 150
-   PORTRAIT_GAP = 24
+   PORTRAIT_GAP = 42             # brickorna sticker ut över kanten, så korten behöver luft emellan
    OPPONENT_BOARD_Y = 300
    VIEWER_BOARD_Y = 600
 
+   # Handen är en solfjäder: korten sitter på en cirkel vars mittpunkt ligger under skärmen
    HAND_CARD = (170, 255)        # ett kort i handen
-   HAND_STEP = 135               # korten överlappar lite
-   HAND_Y = 870                  # bara överdelen syns...
-   HAND_RAISED_Y = 815           # ...tills musen är över kortet
+   HAND_RADIUS = 1150            # cirkelns radie
+   HAND_PIVOT_Y = 2130           # cirkelns mittpunkt (under skärmen): kortens mitt hamnar vid y = 980
+   HAND_ANGLE_STEP = 5.0         # grader mellan korten...
+   HAND_MAX_SPREAD = 44.0        # ...men solfjädern blir aldrig bredare än så här
+   HOVER_SCALE = 1.35            # kortet under musen växer...
+   HOVER_Y = 900                 # ...rätar upp sig och lyfts så att det syns helt
+   HOVER_SPREAD = 45             # och korten bredvid glider undan
 
-   CARD_BACK = (110, 165)        # motståndarens kort syns bara bakifrån
-   CARD_BACK_STEP = 62
-   CARD_BACK_Y = -70
+   HAND_DROP_LINE = 780          # ett kort som släpps ovanför den här linjen spelas ut
+
+   CARD_BACK = (110, 165)        # motståndarens kort syns bara bakifrån, i en solfjäder överst
+   CARD_BACK_RADIUS = 900
+   CARD_BACK_PIVOT_Y = -890      # mittpunkten ovanför skärmen: kortens mitt hamnar vid y = 10
+   CARD_BACK_ANGLE_STEP = 4.0
 
    HERO = (170, 255)
    OPPONENT_HERO = (1660, 50)
@@ -62,16 +72,50 @@ class Layout:
       return list(zip(army, self.row(len(army), self.PORTRAIT, self.PORTRAIT + self.PORTRAIT_GAP, y,
                                      (self.PORTRAIT, self.PORTRAIT))))
 
-   # Korten i den egna handen, nederst och lite överlappande: lista med (kort, ruta)
-   def hand(self, player):
+   # Korten i den egna handen som en solfjäder: lista med (kort, placering).
+   # hovered: platsen i handen för kortet under musen (det lyfts), eller None.
+   def hand(self, player, hovered=None):
       cards = player.get_hand()
-      return list(zip(cards, self.row(len(cards), self.HAND_CARD[0], self.HAND_STEP, self.HAND_Y,
-                                      self.HAND_CARD)))
+      angles = self.fan_angles(len(cards), self.HAND_ANGLE_STEP)
+      placements = []
+      for index, angle in enumerate(angles):
+         x, y = self.on_circle(self.HAND_PIVOT_Y, self.HAND_RADIUS, angle, upward=True)
+         placement = Placement((x, y), self.HAND_CARD, -angle)   # kort till höger lutar medurs
+         if hovered is not None:
+            placement = self.hover_adjusted(placement, index, hovered)
+         placements.append(placement)
+      return list(zip(cards, placements))
 
-   # Motståndarens kort, överst och bakifrån
+   # Kortet under musen rätar upp sig, växer och lyfts. Korten bredvid glider undan.
+   def hover_adjusted(self, placement, index, hovered):
+      if index == hovered:
+         size = (self.HAND_CARD[0] * self.HOVER_SCALE, self.HAND_CARD[1] * self.HOVER_SCALE)
+         return Placement((placement.center.x, self.HOVER_Y), size, 0)
+      side = -1 if index < hovered else 1
+      return placement.moved((side * self.HOVER_SPREAD, 0))
+
+   # Motståndarens kort, bakifrån, i en spegelvänd solfjäder överst. Korten är vända
+   # 180 grader, eftersom motståndaren håller dem mot sig (som i Hearthstone).
    def card_backs(self, player):
-      count = len(player.get_hand())
-      return self.row(count, self.CARD_BACK[0], self.CARD_BACK_STEP, self.CARD_BACK_Y, self.CARD_BACK)
+      angles = self.fan_angles(len(player.get_hand()), self.CARD_BACK_ANGLE_STEP)
+      placements = []
+      for angle in angles:
+         center = self.on_circle(self.CARD_BACK_PIVOT_Y, self.CARD_BACK_RADIUS, angle, upward=False)
+         placements.append(Placement(center, self.CARD_BACK, 180 + angle))
+      return placements
+
+   # Vinklarna för count kort i en solfjäder, symmetriskt runt 0
+   def fan_angles(self, count, step):
+      if count > 1:
+         step = min(step, self.HAND_MAX_SPREAD / (count - 1))
+      return [(index - (count - 1) / 2) * step for index in range(count)]
+
+   # En punkt på en cirkel runt (spelplanens mitt, pivot_y), angle grader från lodlinjen.
+   # upward: punkten ligger ovanför mittpunkten (handen), annars under (motståndarens kort).
+   def on_circle(self, pivot_y, radius, angle, upward):
+      x = self.BOARD_CENTER_X + radius * math.sin(math.radians(angle))
+      dy = radius * math.cos(math.radians(angle))
+      return (x, pivot_y - dy if upward else pivot_y + dy)
 
    def hero(self, player):
       position = self.VIEWER_HERO if self.is_viewer(player) else self.OPPONENT_HERO

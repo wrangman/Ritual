@@ -45,6 +45,34 @@ TIER_PORTRAITS = {
 }
 HIGHEST_TIER = 3
 
+# Spells som inte har en egen bild använder en annan spells bild som passar
+# (samma fraktion, så att färgerna stämmer). Kortnamn -> spellen vars bild lånas.
+SHARED_SPELL_PORTRAITS = {
+   # Ghouls: skydd får skölden, det som tär får det svarta giftet
+   "Veil of Tiamat": "Bone Ward",
+   "Scales of Leviathan": "Bone Ward",
+   "Seal of Apep": "Bone Ward",
+   "Kiss of Lilith": "Bone Ward",
+   "Plague": "Drain Life",
+   "Infect": "Drain Life",
+   "Wither": "Drain Life",
+   "Soul Siphon": "Drain Life",
+   "Ruin": "Curse of Choronzon",
+   "Terror": "Necrotic Bolt",
+   # Academics: förbjudna böcker får böcker, och så vidare
+   "Book of Sorrows": "Pnakotic Manuscripts",
+   "Book of Eibon": "Pnakotic Manuscripts",
+   "Necronomicon": "R'lyeh Text",
+   "De Vermis Mysteriis": "R'lyeh Text",
+   "Book of the Nameless Dead": "Forbidden Codex",
+   "Unaussprechlichen Kulten": "The King in Yellow",
+   "Scroll of Dzyan": "Scroll of Rituals",
+   "Whispered Hex": "Psalms of the Void",
+   "Seal of the Black Sun": "Mirror of Nitocris",
+   "Ward of the Unbegotten": "Cultes des Goules",
+   "Codex of the Eleven Keys": "The Silver Key",
+}
+
 
 # Ett kortnamn som en del av ett filnamn: "Dr. Francis Morgan" -> "Dr-Francis-Morgan",
 # "R'lyeh Text" -> "Rlyeh-Text". Tecken som inte får finnas i filnamn tas bort.
@@ -90,9 +118,14 @@ class ImageLibrary:
       else:
          folder, kind = "creatures", "Creature"
       own = os.path.join(ASSET_FOLDER, folder, f"{prefix}-{kind}-{file_name(card.get_name())}.png")
-      if os.path.exists(own) or kind != "Creature":
+      if os.path.exists(own):
          return own
-      return self.tier_portrait_path(card)
+      if kind == "Creature":
+         return self.tier_portrait_path(card)
+      if kind == "Spell" and card.get_name() in SHARED_SPELL_PORTRAITS:
+         shared = file_name(SHARED_SPELL_PORTRAITS[card.get_name()])
+         return os.path.join(ASSET_FOLDER, folder, f"{prefix}-Spell-{shared}.png")
+      return own
 
    # Bilden för figurens tier, eller None om fraktionen inte har några tierbilder
    def tier_portrait_path(self, card):
@@ -110,6 +143,11 @@ class ImageLibrary:
          return None
       name = FACTION_PREFIX[faction].lower()
       return os.path.join(ASSET_FOLDER, "cards", f"card_frame-{name}.png")
+
+   # Fraktionens baksida på korten, till exempel assets/cards/card_back-ghouls.png
+   def back_path(self, faction_name):
+      name = FACTION_PREFIX[faction_name].lower()
+      return os.path.join(ASSET_FOLDER, "cards", f"card_back-{name}.png")
 
    # Hjältens bild: den första filen i hero_portraits som börjar med fraktionens namn
    def hero_path(self, faction_name):

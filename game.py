@@ -8,6 +8,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 
 import copy
+import random
 from card import SpellCard, Special
 from move import PlayCard, Attack, Sacrifice, EndTurn
 from silent_ui import SilentUI
@@ -18,8 +19,17 @@ from effect import creature_ability
 from factions.neutral import make_trinket
 
 
+# Slantsingling: vem som börjar avgörs slumpvis, som i Hearthstone. Returnerar (först, sedan).
+# Game låter alltid den första spelaren börja, så ordningen bestäms här, innan spelet skapas.
+# Då kan simulate.py fortfarande välja ordningen själv, så att fraktionerna turas om att börja.
+def random_order(player_a, player_b):
+   if random.random() < 0.5:
+      return player_a, player_b
+   return player_b, player_a
+
+
 class Game:
-   STARTING_HAND = 3   # kort i starthanden för den som börjar (tvåan får ett till), som i Hearthstone
+   STARTING_HAND = 3   # kort i starthanden, lika för båda (tvåan får Trinket i stället för ett extra kort)
 
    # ui visar spelet, till exempel en TerminalUI (eller SilentUI när ingen tittar).
    # Valen gör varje spelares controller (människa eller AI), inte ui.
@@ -35,12 +45,14 @@ class Game:
    # Som i Hearthstone: starthand, mulligan och sedan Trinket.
    def start(self):
       # Den som börjar har ett försprång: hen får resurs och ritual en tur före.
-      # Därför får den som börjar som tvåa ett extra kort och en Trinket (+1 resurs en gång),
-      # som The Coin i Hearthstone. Bonusen hör till turordningen, inte till fraktionen.
+      # Därför får den som börjar som tvåa en Trinket (+1 resurs en gång), som The Coin
+      # i Hearthstone. Bonusen hör till turordningen, inte till fraktionen.
+      # Hearthstone ger tvåan också ett extra kort, men här blev det för mycket:
+      # den som började vann bara 41–44 %, och i provspel fick den som började slut på kort.
       # Meddelandet kommer först, så att man vet sin plats när man väljer i mulligan.
       self.ui.show_event(GotTrinket(self.player2))
       self.player1.draw_cards(self.STARTING_HAND)
-      self.player2.draw_cards(self.STARTING_HAND + 1)
+      self.player2.draw_cards(self.STARTING_HAND)
 
       self.mulligan(self.player1)
       self.mulligan(self.player2)
