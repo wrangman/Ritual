@@ -8,7 +8,11 @@
       "Bash(awk '{print $6,$7,$8, substr\\($0, index\\($0,$10\\)\\)}')",
       "Bash(time python3 simulate.py 10 --seed 1)",
       "Bash(grep -n \"SpellCard\\\\|spellens\\\\|Card\\(\\\\`\\\\|Spells \\(\\\\|både spellens\\\\|ritual\\\\`, \\\\`special\\\\|47 st\\\\|Plague och Scales\" CLAUDE.md)",
-      "Bash(python3 simulate.py 100 --seed 1)"
+      "Bash(python3 simulate.py 100 --seed 1)",
+      "Bash(python3 -m pip list)",
+      "Bash(python3 -c \"import pygame; print\\(pygame.version.ver, getattr\\(pygame, 'IS_CE', False\\)\\)\")",
+      "mcp__claude-vscode__getDiagnostics",
+      "Bash(/opt/homebrew/bin/python3.12 -m pip install --dry-run pygame-ce)"
     ],
     "additionalDirectories": [
       "/Users/wrangman/Documents/DBGY/Prog2/Ritual/factions"
