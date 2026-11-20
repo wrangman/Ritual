@@ -9,23 +9,18 @@ __email__ = "johan.wrango@ga.dbgy.se"
 import unittest
 from buff import Buff
 from move import Sacrifice
+from event import RitualNearlyComplete
 from tests.helpers import (new_game, take_from_deck, take_ritual_card, take_creatures,
                            put_ready_on_board)
 
 
-# Ett gränssnitt som sparar meddelandena, så att testet kan se vad spelet skrev
+# Ett gränssnitt som sparar händelserna, så att testet kan se vad spelet berättade
 class RecordingUI:
    def __init__(self):
-      self.messages = []
+      self.events = []
 
-   def show_message(self, text):
-      self.messages.append(text)
-
-   def show_winner(self, player):
-      pass
-
-   def show_draw(self):
-      pass
+   def show_event(self, event):
+      self.events.append(event)
 
 
 class TestRitualWhenCardDies(unittest.TestCase):
@@ -83,7 +78,7 @@ class TestRitualIsDecidedAfterOpponentsTurn(unittest.TestCase):
       academics.get_hero().add_ritual(14)
       put_ready_on_board(academics, take_ritual_card(academics))   # ger ☩ i början av turen
       game.play_turn()
-      self.assertTrue(any("nearly complete" in text for text in game.ui.messages))
+      self.assertTrue(any(isinstance(event, RitualNearlyComplete) for event in game.ui.events))
       self.assertFalse(game.is_over())
 
 

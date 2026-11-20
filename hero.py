@@ -137,7 +137,10 @@ class Hero:
 
    def get_health(self):
       return self.health
-   
+
+   def get_max_health(self):
+      return self.max_health
+
    # attack och magic räknas med buffarna, men aldrig under 0
    def get_attack(self):
       return max(0, self.attack + self.buffs.attack_bonus())

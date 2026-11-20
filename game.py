@@ -12,6 +12,8 @@ from card import SpellCard, Special
 from move import PlayCard, Attack, Sacrifice, EndTurn
 from silent_ui import SilentUI
 from snapshot import Snapshot
+from event import (GotTrinket, MulliganDone, TurnStarted, StressDamage, DrawBurned,
+                   NothingChanged, RitualNearlyComplete, GameWon, GameDrawn)
 from effect import creature_ability
 from factions.neutral import make_trinket
 
@@ -36,7 +38,7 @@ class Game:
       # Därför får den som börjar som tvåa ett extra kort och en Trinket (+1 resurs en gång),
       # som The Coin i Hearthstone. Bonusen hör till turordningen, inte till fraktionen.
       # Meddelandet kommer först, så att man vet sin plats när man väljer i mulligan.
-      self.ui.show_message(f"{self.player2.get_name()} got the trinket and plays second.")
+      self.ui.show_event(GotTrinket(self.player2))
       self.player1.draw_cards(self.STARTING_HAND)
       self.player2.draw_cards(self.STARTING_HAND + 1)
 
@@ -50,13 +52,14 @@ class Game:
    def mulligan(self, player):
       cards = player.get_controller().choose_mulligan(self, player, player.get_hand())
       player.mulligan(cards)
-      self.ui.show_message(f"{player.get_name()} replaces {len(cards)} card(s).")
+      self.ui.show_event(MulliganDone(player, len(cards)))
 
    # En tur: spelaren lägger så många kort hen har råd med och anfaller med varje kort
    # som har legat sedan förra turen (en gång var), i valfri ordning.
    # Turen är slut när inget mer går att göra, eller när spelaren passar (för att spara resurs).
    def play_turn(self):
       current_player = self.current_player
+      self.ui.show_event(TurnStarted(current_player))
 
       # Ritualen avgörs först, innan något annat händer i turen (före dragning och ny ☩).
       # Spelaren nådde målet tidigare och motståndaren har haft en tur på sig att svara.
@@ -82,12 +85,9 @@ class Game:
       burned_before = len(current_player.get_burned())
       drawn = current_player.draw_cards(1) #always draw card at your turn
       if not drawn:
-         stress = current_player.get_stress()
-         self.ui.show_message(f"{current_player.get_name()} has no cards left. "
-                              f"Stress {stress}: the hero takes {stress} damage.")
+         self.ui.show_event(StressDamage(current_player, current_player.get_stress()))
       elif len(current_player.get_burned()) > burned_before:
-         self.ui.show_message(f"{current_player.get_name()}'s hand is full: "
-                              f"{drawn[0].get_name()} is burned.")
+         self.ui.show_event(DrawBurned(current_player, drawn[0]))
       current_player.refill_resource()   # 1 mer än förra turen, upp till 10
 
       # Korten på brädet ger sin ☩ till hjälten. Når man målet vinner man först i början
@@ -102,30 +102,29 @@ class Game:
       while True:
          moves = self.get_legal_moves(current_player)
          if len(moves) == 1:
-            break   # bara "end turn" kvar: inget mer går att göra
+            move = moves[0]   # bara "end turn" kvar: inget mer går att göra
+         else:
+            move = current_player.get_controller().choose_move(self, current_player, moves)
 
-         move = current_player.get_controller().choose_move(self, current_player, moves)
+         # Berätta om draget och sedan exakt vad det ändrade (skada, döda kort, ritual, resurs ...),
+         # så att man alltid ser vad som hände, både med sina egna och AI:ns drag.
+         self.ui.show_event(move.to_event(current_player))
          if move.ends_turn():
             break
-
-         # Visa draget och sedan exakt vad det ändrade (skada, döda kort, ritual, resurs ...),
-         # så att man alltid ser vad som hände, både med sina egna och AI:ns drag.
-         self.ui.show_message(f"\n>> {move.describe(current_player)}")
          before = Snapshot(self)
          move.execute(self)
          changes = before.changes_until(Snapshot(self))
          if not changes:
-            changes = ["Nothing happened."]
-         for line in changes:
-            self.ui.show_message(f"   {line}")
+            changes = [NothingChanged()]
+         for event in changes:
+            self.ui.show_event(event)
 
          if self.is_over():
             break
 
       # Varning till motståndaren: det här är sista chansen att stoppa ritualen
       if not self.is_over() and current_player.reached_ritual():
-         self.ui.show_message(f"☩ The ritual of {current_player.get_name()} is nearly complete! "
-                              f"Lower it before their next turn, or it is over.")
+         self.ui.show_event(RitualNearlyComplete(current_player))
 
    def switch_turn(self):
       if self.current_player is self.player1:
@@ -331,6 +330,6 @@ class Game:
 
       winner = self.determine_winner()
       if winner:
-         self.ui.show_winner(winner)
+         self.ui.show_event(GameWon(winner))
       else:
-         self.ui.show_draw()
+         self.ui.show_event(GameDrawn())

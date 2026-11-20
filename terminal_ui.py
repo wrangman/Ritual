@@ -17,6 +17,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 import time
 from card import SpellCard, RitualCard, FactionName
 from move import Attack, Sacrifice
+from event import MoveEvent, ChangeEvent, GameWon
 
 
 RESET = "\033[0m"   # tillbaka till terminalens vanliga färg
@@ -162,19 +163,22 @@ class TerminalUI:
          text += f", stress {player.get_stress()}"
       return text + ")"
 
-   # Shows who won. Game decides the winner, the terminal only shows it.
-   def show_winner(self, player):
-      print(f"WINNER BY A MILE - MAYBE!\n\n {player.get_name()}")
-
-   # Ett kort meddelande till spelaren
-   # En kort paus efter varje rad, annars rusar datorns drag förbi innan man hinner läsa dem
-   def show_message(self, text):
-      print(text)
+   # Visar en händelse från Game som en rad text. Sorten avgör hur raden ser ut:
+   # ett drag får ">>", det som draget ändrade dras in under det, och det man ska
+   # lägga märke till (din tur, vinst ...) står för sig. Ett grafiskt gränssnitt
+   # har en metod med samma namn som i stället animerar händelsen.
+   # En kort paus efter varje rad, annars rusar datorns drag förbi innan man hinner läsa dem.
+   def show_event(self, event):
+      text = event.describe()
+      if isinstance(event, GameWon):
+         text = f"WINNER BY A MILE - MAYBE!\n\n {event.player.get_name()}"
+      if isinstance(event, MoveEvent):
+         print(f"\n>> {text}")
+      elif isinstance(event, ChangeEvent):
+         print(f"   {text}")
+      else:
+         print(f"\n{text}")
       time.sleep(MESSAGE_DELAY)
-
-   # Båda vann samtidigt, till exempel om båda hjältarna dog av samma effekt
-   def show_draw(self):
-      print("DRAW! Both rituals ended in madness.")
 
 
    # Val
@@ -192,8 +196,7 @@ class TerminalUI:
       army = player.get_army()
       opponent = game.get_opponent_of(player)
 
-      print(f"\n--- {player.get_name()}'s turn ---")
-      print(f"Opponent {opponent.get_name()}:")
+      print(f"\nOpponent {opponent.get_name()}:")
       print(self.show_hero(opponent))
       if opponent.get_army():
          print(self.show_army(opponent))

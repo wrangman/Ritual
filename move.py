@@ -9,11 +9,16 @@ like the valid actions in MetaStone (a Hearthstone simulator).
 Each move is a small object that knows how to carry itself out (Command
 pattern, Gang of Four). A move is complete: it already has its target, so an
 AI can try out each move and compare them.
+
+Each move also knows which event tells the user interface about it (see event.py),
+so Game does not need to know what kind of move it is.
 """
 
 __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
+
+from event import CardPlayed, AttackMade, CardSacrificed, TurnEnded
 
 
 class Move:
@@ -34,9 +39,9 @@ class Move:
    def execute(self, game):
       raise NotImplementedError("Varje sorts drag måste ha en egen execute()")
 
-   # Kort text om draget, till exempel så att man ser vad AI:n gjorde
-   def describe(self, player):
-      raise NotImplementedError("Varje sorts drag måste ha en egen describe()")
+   # Händelsen som berättar för gränssnittet om draget, till exempel så att man ser vad AI:n gjorde
+   def to_event(self, player):
+      raise NotImplementedError("Varje sorts drag måste ha en egen to_event()")
 
 
 # Lägg ett kort från handen: en figur hamnar på brädet, en spell används direkt.
@@ -44,11 +49,8 @@ class PlayCard(Move):
    def execute(self, game):
       game.play_card(self.card, self.target)
 
-   def describe(self, player):
-      text = f"{player.get_name()} plays {self.card.get_name()}"
-      if self.target is not None:
-         text += f" on {self.target.get_name()}"
-      return text
+   def to_event(self, player):
+      return CardPlayed(player, self.card, self.target)
 
 
 # En figur på brädet anfaller.
@@ -56,8 +58,8 @@ class Attack(Move):
    def execute(self, game):
       game.attack(self.card, self.target)
 
-   def describe(self, player):
-      return f"{player.get_name()}: {self.card.get_name()} attacks {self.target.get_name()}"
+   def to_event(self, player):
+      return AttackMade(player, self.card, self.target)
 
 
 # SACRIFICE: en figur offrar sig i stället för att anfalla. Den dör och ger
@@ -66,8 +68,8 @@ class Sacrifice(Move):
    def execute(self, game):
       game.sacrifice(self.card, self.target)
 
-   def describe(self, player):
-      return f"{player.get_name()}: {self.card.get_name()} sacrifices itself for {self.target.get_name()}"
+   def to_event(self, player):
+      return CardSacrificed(player, self.card, self.target)
 
 
 # Spelaren är klar med sin tur (till exempel för att spara resurs till ett dyrt kort).
@@ -78,5 +80,5 @@ class EndTurn(Move):
    def execute(self, game):
       pass   # inget händer, Game avslutar turen
 
-   def describe(self, player):
-      return f"{player.get_name()} ends the turn"
+   def to_event(self, player):
+      return TurnEnded(player)

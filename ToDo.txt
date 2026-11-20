@@ -24,6 +24,16 @@ BALANS
 - Den som börjar vinner nu bara 44 % (3/4 kort i starthanden + mulligan + Trinket). Tvåan har alltså fått
   lite för mycket. Förslag att prova: ta bort extrakortet eller Trinket, en sak i taget.
 
+GRAFIK
+- Gjort 2026-11-20: händelser (event.py). Game visar allt med ui.show_event(event).
+  Gränssnittets metoder: show_event, choose_move, choose_card, choose_mulligan.
+- Gjort 2026-11-20: PygameUI (gui/, starta med python3 main_gui.py). Porträtt med stats på brädet,
+  hjältar till höger, ikonlista med senaste drag, ruta vid din tur, linje vid anfall, siffror som flyger,
+  kort som tonar bort, konsol på Tab. Terminalen (main.py) finns kvar.
+- 44 kort saknar bild (se python-kommandot i CLAUDE.md eller fråga Claude om listan).
+- NÄSTA: provspela och se vad som känns fel. Sedan bättre animationer (kortet åker fram vid anfall,
+  skakning vid träff, porträttet faller ur kortet när det spelas).
+
 IDÉER SOM VÄNTAR
 - Spells som ger ritual (t.ex. Psalms of the Void, The King in Yellow). Vänta tills balansen ovan är fixad.
   Byggs i så fall med Combined(..., GainRitual(n)) och talet skrivs i kortets text.
