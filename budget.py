@@ -36,6 +36,12 @@ class Budget:
    POINTS_PER_COST = 5   # ett kort får 5 poäng per kostnad: kostnad 1 = 5, kostnad 3 = 15
    TOLERANCE = 0.5       # ett kort får ligga högst så här mycket under budgeten (🪄 ger halva poäng)
 
+   # Värden som figurer och spells delar. De står här, så att samma sak aldrig får två priser.
+   CARD = 4              # ett kort till handen (Hearthstone: att dra ett kort är värt ungefär 1 mana)
+   CREATURE = 10         # en slumpad figur på brädet: en figur för kostnad 2 i snitt
+   RITUAL_ONCE = 2       # 1 ☩ en gång (från en spell)
+   TURNS_ON_BOARD = 2    # så många turer ett kort brukar hinna verka innan det dör
+
    def points(self, card):
       raise NotImplementedError("Varje sorts budget måste ha en egen points()")
 
@@ -58,16 +64,17 @@ class StatBudget(Budget):
       "attack": 1,    # ⚔️
       "health": 1,    # ❤️
       "magic": 0.5,   # 🪄 skyddar bara mot spells, så den är värd mindre
-      "ritual": 2,    # ☩ ger ritual varje tur kortet ligger kvar
+      # ☩ på ett kort ges varje tur kortet ligger kvar, alltså ungefär två gånger: 2 × 2 = 4
+      "ritual": Budget.RITUAL_ONCE * Budget.TURNS_ON_BOARD,
    }
 
    # Vad en förmåga kostar ("text tax" i Hearthstone)
    ABILITY_POINTS = {
       Special.GUARD: 2,
-      Special.STUDY: 2,
+      Special.STUDY: Budget.CARD,        # drar ett kort, samma pris som i spellbudgeten
       Special.SACRIFICE: 2,
       Special.DEVOUR: 5,   # kortet växer för alltid med ett dött korts ⚔️ och ❤️, ofta +4/+5
-      Special.SUMMON: 3,
+      Special.SUMMON: Budget.CREATURE,   # en slumpad figur på brädet, som Resurrect
    }
 
    # Hur många poäng kortets stats och förmåga är värda
@@ -91,20 +98,25 @@ class StatBudget(Budget):
 # En spell är värd det dess effekt gör. Varje sorts effekt har ett eget pris nedan.
 # Priserna ligger här och inte i effect.py: effekterna sköter spelet, budgeten sköter balansen.
 class SpellBudget(Budget):
+   # Ett steg i skada är redan 2 poäng (4 på alla fiender), så spells kan inte träffa
+   # budgeten lika exakt som figurer. En spell får ligga högst 2 poäng under.
+   TOLERANCE = 2
+
+   # Spells som ger resurs (The Silver Key, De Vermis Mysteriis, Trinket) mäts inte:
+   # budgeten mäter värde per resurs, och de korten ändrar själva måttstocken.
+   OUTSIDE_BUDGET = (GainResource,)
+
    # Härlett ur figurbudgeten: en figur för kostnad C har 5C poäng, ungefär hälften ❤️ (2,5C).
    # Att döda den kräver alltså 2,5C skada, så 1 skada på ett mål är värd 2 poäng.
    DAMAGE = 2
 
-   # Uppskattningar, att prova med simulate.py:
+   # Uppskattningar, att prova med simulate.py (CARD, CREATURE, RITUAL_ONCE och
+   # TURNS_ON_BOARD står i Budget, eftersom figurerna använder dem också):
    HEALTH = 1             # 1 ❤️ till ett eget kort eller hjälten, samma som på en figur
-   CARD = 4               # ett kort till handen (Hearthstone: att dra ett kort är värt ungefär 1 mana)
-   RITUAL = 2             # 1 ☩ en gång, samma som ☩ på en figur
    ATTACK = 1             # 1 ⚔️ mer eller mindre för alltid, samma som på en figur
    MAGIC = 0.5            # 1 🪄 mer för alltid, samma som på en figur
    TEMPORARY = 0.5        # en ändring som bara varar en tur är värd hälften
    BOARD = 2              # så många kort som ligger på en sida i snitt (mätt: 1,8–2,2)
-   CREATURE = 10          # en slumpad figur ur gravhögen: en figur för kostnad 2 i snitt
-   INFECT_TURNS = 2       # Infect hinner skada ungefär två gånger innan kortet dör
 
    # Statusar för ett kort under en tur
    STATUS_POINTS = {
@@ -128,16 +140,16 @@ class SpellBudget(Budget):
          LowerAttack: lambda e: self.ATTACK * e.amount,
          GainArmor: self.gain_armor,
          BuffOwnCard: lambda e: self.MAGIC * e.magic + self.HEALTH * e.health,
-         LowerRitual: lambda e: self.RITUAL * e.amount,
-         StealRitual: lambda e: 2 * self.RITUAL * e.amount,   # motståndaren tappar, jag får
-         GainRitual: lambda e: self.RITUAL * e.amount,
+         LowerRitual: lambda e: self.RITUAL_ONCE * e.amount,
+         StealRitual: lambda e: 2 * self.RITUAL_ONCE * e.amount,   # motståndaren tappar, jag får
+         GainRitual: lambda e: self.RITUAL_ONCE * e.amount,
          DrawCards: lambda e: self.CARD * e.amount,
          LookAtTopCards: lambda e: self.CARD + 1,   # ett kort, och man får välja bland flera
          ReturnRandomToHand: lambda e: self.CARD,
          ReviveRandom: lambda e: self.CREATURE,
          DamageOwnHero: lambda e: -self.HEALTH * e.amount,
          GiveBuff: self.give_buff,
-         Infect: lambda e: self.DAMAGE * e.amount * self.INFECT_TURNS,
+         Infect: lambda e: self.DAMAGE * e.amount * self.TURNS_ON_BOARD,
          ReflectNextAttack: lambda e: self.MIRROR,
          CurseRitualAttacker: lambda e: self.CURSE,
          Combined: lambda e: sum(self.effect_points(part) for part in e.effects),
@@ -148,6 +160,10 @@ class SpellBudget(Budget):
 
    def points(self, card):
       return self.effect_points(card.get_effect())
+
+   # Mäts spellen med budgeten? Inte om den ger resurs (se OUTSIDE_BUDGET)
+   def is_measured(self, card):
+      return not isinstance(card.get_effect(), self.OUTSIDE_BUDGET)
 
    # En effekt som inte har något pris ska synas, inte bli gratis i tysthet
    def effect_points(self, effect):
@@ -236,7 +252,11 @@ def print_creatures(budget, cards, title):
 def print_spells(budget, cards, title):
    print(title)
    for card in cards:
-      print(f"   ({card.get_cost()}) {card.get_name():28s} {budget_text(budget, card)}")
+      if budget.is_measured(card):
+         text = budget_text(budget, card)
+      else:
+         text = "utanför budgeten (ger resurs)"
+      print(f"   ({card.get_cost()}) {card.get_name():28s} {text}")
 
 
 def main():

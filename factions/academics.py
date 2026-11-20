@@ -11,7 +11,7 @@ __email__ = "johan.wrango@ga.dbgy.se"
 
 import copy
 from effect import (DamageOneEnemy, GainResource, DamageAllEnemyCards,
-                    LowerAttack, LowerRitual, StealRitual, GainRitual,
+                    LowerAttack, LowerRitual, StealRitual, GainRitual, HealOwnHero,
                     DrawCards, ReturnRandomToHand, LookAtTopCards, DamageOwnHero, Combined,
                     GiveBuff, ReflectNextAttack, SummonGhost, DrainHealth)
 from faction import Faction
@@ -37,10 +37,10 @@ tier_1 = [
 
    CreatureCard(FactionName.ACADEMICS, "Novice Occultist",
                 attack_name="Chalk Sigil",
-                attack=1,
+                attack=2,
                 magic=2,
-                health=1,
-                ritual=1,
+                health=2,
+                ritual=0,
                 special=None,
                 cost=1,
                 rarity=Rarity.COMMON),
@@ -82,17 +82,17 @@ tier_2 = [
                 attack_name="Heavy Textbook",
                 attack=3,
                 magic=2,
-                health=2,
-                ritual=1,
+                health=4,
+                ritual=0,
                 special=Special.SACRIFICE,
                 cost=2,
                 rarity=Rarity.RARE),
 
    CreatureCard(FactionName.ACADEMICS, "Restricted Stacks Librarian",
                 attack_name="Iron-Bound Tome",
-                attack=3,
+                attack=2,
                 magic=2,
-                health=4,
+                health=3,
                 ritual=0,
                 special=Special.STUDY,
                 cost=2,
@@ -100,7 +100,7 @@ tier_2 = [
 
    CreatureCard(FactionName.ACADEMICS, "Dark Occultist",
                 attack_name="Ceremonial Athame",
-                attack=4,
+                attack=2,
                 magic=2,
                 health=1,
                 ritual=1,
@@ -120,10 +120,10 @@ tier_2 = [
 
    CreatureCard(FactionName.ACADEMICS, "Night Archivist",
                 attack_name="Lantern Swing",
-                attack=2,
+                attack=1,
                 magic=2,
-                health=3,
-                ritual=1,
+                health=4,
+                ritual=0,
                 special=Special.STUDY,
                 cost=2,
                 rarity=Rarity.RARE),
@@ -133,9 +133,9 @@ tier_2 = [
 tier_3 = [
    CreatureCard(FactionName.ACADEMICS, "Dr. Francis Morgan",
                 attack_name="Hunting Rifle",
-                attack=5,
+                attack=4,
                 magic=2,
-                health=5,
+                health=4,
                 ritual=1,
                 special=Special.GUARD,
                 cost=3,
@@ -143,9 +143,9 @@ tier_3 = [
 
    CreatureCard(FactionName.ACADEMICS, "Herbert West",
                 attack_name="Reagent Syringe",
-                attack=5,
+                attack=4,
                 magic=4,
-                health=6,
+                health=5,
                 ritual=1,
                 special=None,
                 cost=3,
@@ -153,9 +153,9 @@ tier_3 = [
 
    CreatureCard(FactionName.ACADEMICS, "Keziah Mason",
                 attack_name="Brown Jenkin's Bite",
-                attack=5,
+                attack=4,
                 magic=5,
-                health=5,
+                health=4,
                 ritual=1,
                 special=None,
                 cost=3,
@@ -166,9 +166,9 @@ tier_3 = [
                 attack=4,
                 magic=2,
                 health=5,
-                ritual=1,
+                ritual=0,
                 special=Special.SUMMON,
-                cost=3,
+                cost=4,
                 rarity=Rarity.EPIC),
 ]
 
@@ -178,8 +178,8 @@ tier_3 = [
 # Figurer ger högst ☩ 1, så att ritualkorten är det som bygger ritualen.
 ritual_cards = [
    RitualCard(FactionName.ACADEMICS, "Lectern of the Madman",
-              magic=5,
-              health=7,
+              magic=4,
+              health=6,
               ritual=3,
               special=None,
               cost=4,
@@ -187,7 +187,7 @@ ritual_cards = [
 
    RitualCard(FactionName.ACADEMICS, "Sentinel Hill Stone Circle",
               magic=4,
-              health=8,
+              health=6,
               ritual=3,
               special=None,
               cost=4,
@@ -195,23 +195,23 @@ ritual_cards = [
 
    RitualCard(FactionName.ACADEMICS, "The Angled Attic",
               magic=4,
-              health=7,
+              health=10,
               ritual=2,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.ACADEMICS, "Circle of Eleven Candles",
-              magic=5,
-              health=7,
+              magic=4,
+              health=10,
               ritual=2,
               special=None,
               cost=4,
               rarity=Rarity.LEGENDARY),
 
    RitualCard(FactionName.ACADEMICS, "Midnight Seminar",
-              magic=3,
-              health=8,
+              magic=4,
+              health=10,
               ritual=2,
               special=None,
               cost=4,
@@ -223,7 +223,7 @@ book_of_sorrows = SpellCard(FactionName.ACADEMICS, "Book of Sorrows",
                             special=Special.BOOK_OF_SORROWS,
                             cost=1,
                             rarity=Rarity.UNCOMMON,
-                            effect=DamageOneEnemy(3))
+                            effect=DamageOneEnemy(2))
 
 # The other basic spells (5 cards x 1 copy = 5). Förut två exemplar var;
 # de andra platserna gick till tier 1.
@@ -258,16 +258,16 @@ basic_spells = [
              special=Special.WHISPERED_HEX,
              cost=1,
              rarity=Rarity.UNCOMMON,
-             effect=GiveBuff(GiveBuff.ENEMY_CARD, attack=-2)),
+             effect=Combined(GiveBuff(GiveBuff.ENEMY_CARD, attack=-2), DrawCards(1))),
 ]
 
 # Ghosts: creatures that are not in the deck. Spells summon a new copy each time.
 # They give no ritual: they are conjured, not part of the ritual.
 the_unbegotten = CreatureCard(FactionName.ACADEMICS, "The Unbegotten",
                               attack_name="Cold Grasp",
-                              attack=2,
+                              attack=4,
                               magic=1,
-                              health=5,
+                              health=8,
                               ritual=0,
                               special=Special.GUARD,
                               cost=3,
@@ -275,9 +275,9 @@ the_unbegotten = CreatureCard(FactionName.ACADEMICS, "The Unbegotten",
 
 void_wraith = CreatureCard(FactionName.ACADEMICS, "Void Wraith",
                            attack_name="Wail from the Void",
-                           attack=1,
+                           attack=4,
                            magic=4,
-                           health=3,
+                           health=5,
                            ritual=0,
                            special=None,
                            cost=3,
@@ -289,31 +289,31 @@ spell_cards = [
              special=Special.NECRONOMICON,
              cost=4,
              rarity=Rarity.EPIC,
-             effect=DamageOneEnemy(7)),
+             effect=DamageOneEnemy(10)),
 
    SpellCard(FactionName.ACADEMICS, "Pnakotic Manuscripts",
              special=Special.PNAKOTIC_MANUSCRIPTS,
              cost=3,
              rarity=Rarity.EPIC,
-             effect=DamageAllEnemyCards(3)),
+             effect=Combined(DamageAllEnemyCards(3), HealOwnHero(3))),
 
    SpellCard(FactionName.ACADEMICS, "Cultes des Goules",
              special=Special.CULTES_DES_GOULES,
-             cost=2,
+             cost=1,
              rarity=Rarity.RARE,
-             effect=LowerAttack(3)),
+             effect=LowerAttack(4)),
 
    SpellCard(FactionName.ACADEMICS, "Unaussprechlichen Kulten",
              special=Special.UNAUSSPRECHLICHEN_KULTEN,
              cost=2,
              rarity=Rarity.RARE,
-             effect=Combined(StealRitual(3), DamageOwnHero(1))),
+             effect=Combined(StealRitual(3), DamageOwnHero(2))),
 
    SpellCard(FactionName.ACADEMICS, "Book of Eibon",
              special=Special.BOOK_OF_EIBON,
              cost=2,
              rarity=Rarity.RARE,
-             effect=LowerRitual(3)),
+             effect=LowerRitual(4)),
 
    SpellCard(FactionName.ACADEMICS, "R'lyeh Text",
              special=Special.RLYEH_TEXT,
@@ -323,15 +323,15 @@ spell_cards = [
 
    SpellCard(FactionName.ACADEMICS, "Scroll of Dzyan",
              special=Special.SCROLL_OF_DZYAN,
-             cost=2,
+             cost=1,
              rarity=Rarity.RARE,
-             effect=GiveBuff(GiveBuff.ALL_OWN_CARDS, magic=2)),
+             effect=Combined(DrawCards(1), GiveBuff(GiveBuff.ALL_OWN_CARDS, magic=2))),
 
    SpellCard(FactionName.ACADEMICS, "Rite of the Thirteenth Hour",
              special=Special.RITE_OF_THE_THIRTEENTH_HOUR,
-             cost=2,
+             cost=1,
              rarity=Rarity.RARE,
-             effect=GiveBuff(GiveBuff.ALL_OWN_CARDS, attack=2, this_turn_only=True)),
+             effect=GiveBuff(GiveBuff.ALL_OWN_CARDS, attack=3, this_turn_only=True)),
 
    SpellCard(FactionName.ACADEMICS, "Psalms of the Void",
              special=Special.PSALMS_OF_THE_VOID,
@@ -341,20 +341,20 @@ spell_cards = [
 
    SpellCard(FactionName.ACADEMICS, "The King in Yellow",
              special=Special.THE_KING_IN_YELLOW,
-             cost=4,
+             cost=2,
              rarity=Rarity.EPIC,
-             effect=GiveBuff(GiveBuff.ALL_ENEMY_CARDS, cannot_attack=True)),
+             effect=Combined(GiveBuff(GiveBuff.ALL_ENEMY_CARDS, cannot_attack=True), DrawCards(1))),
 
    SpellCard(FactionName.ACADEMICS, "Book of the Nameless Dead",
              special=Special.BOOK_OF_THE_NAMELESS_DEAD,
-             cost=2,
+             cost=1,
              rarity=Rarity.RARE,
              effect=ReturnRandomToHand()),
 
    # Spells that protect ritual
    SpellCard(FactionName.ACADEMICS, "Seal of the Black Sun",
              special=Special.SEAL_OF_THE_BLACK_SUN,
-             cost=4,
+             cost=1,
              rarity=Rarity.EPIC,
              effect=GiveBuff(GiveBuff.ALL_OWN_RITUAL_CARDS, no_melee_damage=True)),
 
@@ -362,7 +362,7 @@ spell_cards = [
              special=Special.MIRROR_OF_NITOCRIS,
              cost=2,
              rarity=Rarity.RARE,
-             effect=ReflectNextAttack()),
+             effect=Combined(ReflectNextAttack(), DrawCards(1))),
 
    SpellCard(FactionName.ACADEMICS, "Ward of the Unbegotten",
              special=Special.WARD_OF_THE_UNBEGOTTEN,

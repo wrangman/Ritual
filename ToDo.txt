@@ -15,11 +15,12 @@ BALANS
 - Steg 2 (experiment, inte ändrat): Academics med 30 figurer / 15 spells vann 56 %. Figurer är värda mer än spells.
 - Steg 3: spellbudget byggd (SpellBudget i budget.py). Nästan alla spells ligger under budgeten, i båda fraktionerna.
   Academics har 22 spells mot Ghouls 15, därför förlorar de. Se CLAUDE.md för alla siffror och värden.
-- NÄSTA: förslag för varje spell så att den hamnar på budgeten (höj talet eller sänk kostnaden), båda fraktionerna.
-  Sedan simulering. Om det inte räcker: tänk om kring Academics spells (användarens beslut).
-- RÄTTA: STUDY kostar 2 poäng men ett kort är värt 4; SUMMON kostar 3 men en figur på brädet är värd ~10.
-  Wilbur Whateley, Restricted Stacks Librarian och Night Archivist är alltså för billiga.
-- Ritualkort har ingen egen budget än.
+- Steg 4 (2026-11-20): alla spells lyfta till budgeten (nytt tal eller lägre kostnad, båda fraktionerna).
+  ACADEMICS 50 %, GHOULS 50 % (seed 1), 48/52 med seed 1000. Detaljer i CLAUDE.md.
+- Steg 5 (2026-11-20): STUDY 4, SUMMON 10, ☩ på kort 4 (ges ungefär två turer), ritualkort med i budgeten.
+  Alla kort omräknade. Academics 40 % / 34 % (seed 1 / 1000).
+- FYND: 🪄 är för dyr. Experiment med 🪄 bytt mot ❤️ hos Academics: 53 % / 47 %. Bestäm: sänk priset på 🪄
+  (½ → ¼ eller 0), eller ta bort det mesta av 🪄 på Academics figurer.
 - Den som börjar vinner nu bara 44 % (3/4 kort i starthanden + mulligan + Trinket). Tvåan har alltså fått
   lite för mycket. Förslag att prova: ta bort extrakortet eller Trinket, en sak i taget.
 
@@ -34,7 +35,7 @@ RÄKNA RADER KOD (bara .py-filer, inga tomma rader) – kör i projektmappen
   (Get-ChildItem -Recurse -Filter *.py | Get-Content | Where-Object { $_.Trim() -ne "" }).Count
 
 KÖR SIMULERING EFTER VARJE BALANSÄNDRING
-- python3 simulate.py 200 --seed 1   (senast: Academics 37 %, Ghouls 63 %, den som började vann 42 %)
+- python3 simulate.py 200 --seed 1   (senast: Academics 40 %, Ghouls 60 %, den som började vann 44 %)
 - python3 budget.py   visar alla kort mot budgeten (figurer, ritualkort, spells)
 
 GJORT 2026-11-19 (inte committat än)

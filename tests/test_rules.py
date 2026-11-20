@@ -207,10 +207,11 @@ class TestHeroArmor(unittest.TestCase):
       self.hero.gain_armor(2)
       self.game.current_player = self.ghouls
       self.ghouls.resource = 10
-      bolt = take_from_deck(self.ghouls, "Necrotic Bolt")   # 3 magisk skada
+      bolt = take_from_deck(self.ghouls, "Necrotic Bolt")   # magisk skada på en fiende
+      damage = bolt.get_effect().amount
       self.ghouls.hand.append(bolt)
       self.game.play_card(bolt, self.hero)
-      self.assertEqual((self.hero.get_health(), self.hero.get_armor()), (30 - 3, 2))
+      self.assertEqual((self.hero.get_health(), self.hero.get_armor()), (30 - damage, 2))
 
    def test_bone_ward_gives_the_hero_armor(self):
       self.game.current_player = self.ghouls
@@ -241,18 +242,18 @@ class TestSpells(unittest.TestCase):
    def test_magic_damage_is_lowered_by_the_targets_magic(self):
       west = take_from_deck(self.academics, "Herbert West")   # som mål
       west.set_magic(4)
-      west.set_health(10)
+      west.set_health(20)
       put_ready_on_board(self.ghouls, west)
-      self.cast("Necronomicon", west)                          # 7 magisk skada
-      self.assertEqual(west.get_health(), 10 - (7 - 4))
+      spell = self.cast("Necronomicon", west)
+      self.assertEqual(west.get_health(), 20 - (spell.get_effect().amount - 4))
 
    def test_card_without_magic_takes_all_spell_damage(self):
       elder = take_from_deck(self.ghouls, "Elder Ghoul")
       elder.set_magic(0)
-      elder.set_health(10)
+      elder.set_health(20)
       put_ready_on_board(self.ghouls, elder)
-      self.cast("Book of Sorrows", elder)                     # 3 magisk skada
-      self.assertEqual(elder.get_health(), 10 - 3)
+      spell = self.cast("Book of Sorrows", elder)
+      self.assertEqual(elder.get_health(), 20 - spell.get_effect().amount)
 
    def test_scroll_of_rituals_adds_two(self):
       self.cast("Scroll of Rituals")
@@ -312,7 +313,7 @@ class TestCreatureAbilities(unittest.TestCase):
 class TestSacrifice(unittest.TestCase):
    def setUp(self):
       self.game, self.academics, self.ghouls = new_game()
-      self.apprentice = take_from_deck(self.academics, "Miskatonic Apprentice")   # ❤️ 2 ☩ 1
+      self.apprentice = take_from_deck(self.academics, "Miskatonic Apprentice")
       self.ritual_card = take_ritual_card(self.academics)
       put_ready_on_board(self.academics, self.apprentice)
       put_ready_on_board(self.academics, self.ritual_card)
@@ -324,12 +325,13 @@ class TestSacrifice(unittest.TestCase):
       self.academics.get_hero().add_ritual(5)
       health = self.ritual_card.get_health()
       gift = self.apprentice.get_max_health()
+      lost_ritual = self.apprentice.get_ritual()   # kortet dör, så dess ☩ försvinner
       move = self.sacrifice_moves()[0]
       self.assertIs(move.get_target(), self.ritual_card)
       move.execute(self.game)
       self.assertNotIn(self.apprentice, self.academics.get_army())
       self.assertEqual(self.ritual_card.get_health(), health + gift)
-      self.assertEqual(self.academics.get_hero().get_ritual(), 5 - 1)   # lärlingens ☩ 1
+      self.assertEqual(self.academics.get_hero().get_ritual(), 5 - lost_ritual)
 
    def test_new_card_cannot_sacrifice(self):
       self.apprentice.enter_board()   # som om den lades den här turen
