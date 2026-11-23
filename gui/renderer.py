@@ -66,6 +66,7 @@ def part(rect, fractions):
 class Renderer:
    BOARD_MARGIN = 20      # plats runt ett porträtt på en egen yta, för Guard-ramen och brickorna
    CACHE_LIMIT = 400      # så många färdigritade kort som sparas innan listan töms
+   DIM_SHADE = 90         # hur mörkt ett kort som inte går att spela blir (0 = inte alls, 255 = svart; förut 140)
 
    def __init__(self, images):
       self.images = images
@@ -308,7 +309,7 @@ class Renderer:
 
       if dim:   # kortet går inte att spela nu
          shade = pygame.Surface(rect.size, pygame.SRCALPHA)
-         shade.fill((0, 0, 0, 140))
+         shade.fill((0, 0, 0, self.DIM_SHADE))
          surface.blit(shade, rect)
 
    # Ett kort ritat på en egen yta, till exempel för en effekt som visar kortet stort
@@ -344,8 +345,8 @@ class Renderer:
          pygame.draw.rect(surface, FACTION_RGB.get(faction.get_name(), NEUTRAL_RGB), rect, border_radius=14)
          self.text(surface, faction.get_hero().get_name(), self.font(18, bold=True), center=rect.center)
 
-   # Hjälten: bilden, ❤️ och 🛡️ som brickor, och ritual och resurs under
-   def hero(self, surface, player, rect, border=None):
+   # Hjälten: bilden, ❤️ och 🛡️ som brickor, och namn, ritual och resurs i spalten info
+   def hero(self, surface, player, rect, info, border=None):
       hero = player.get_hero()
       if border:
          pygame.draw.rect(surface, border, rect.inflate(10, 10), 5, border_radius=16)
@@ -360,7 +361,11 @@ class Renderer:
          self.badge(surface, (rect.right - inset, rect.bottom - inset - 2 * radius - 4), hero.get_armor(),
                     ARMOR_COLOR, round(radius * 0.85))
 
-      font = self.font(22, bold=True)
+      self.hero_info(surface, player, info)
+
+   # Namn, ritual, resurs (och overload, stress, statusar) i en vänsterjusterad spalt, centrerad på höjden
+   def hero_info(self, surface, player, info):
+      hero = player.get_hero()
       goal = player.get_faction().get_ritual_goal()
       lines = [f"{player.get_name()}",
                f"Ritual {hero.get_ritual()} / {goal}",
@@ -369,8 +374,20 @@ class Renderer:
          lines.append(f"Overload {player.get_overload()}")
       if player.get_stress() > 0:
          lines.append(f"Stress {player.get_stress()}")
-      for i, line in enumerate(lines):
-         self.text(surface, line, font, center=(rect.centerx, rect.bottom + 22 + i * 28))
-      statuses = hero.statuses()
-      if statuses:
-         self.text(surface, ", ".join(statuses), self.font(16, kind="sans"), center=(rect.centerx, rect.top - 14))
+      # Alla rader får samma storlek: den som räcker för den bredaste raden
+      widest = max(lines, key=lambda line: self.font(20, bold=True).size(line)[0])
+      font = self.fitting_font(widest, 20, info.width)
+      status_font = self.font(15, kind="sans")
+      status_lines = self.wrap(", ".join(hero.statuses()), status_font, info.width)
+
+      line_height = font.get_linesize() + 2
+      status_height = status_font.get_linesize()
+      total = len(lines) * line_height + len(status_lines) * status_height
+      y = info.centery - total // 2
+      # Vänsterjusterat: raderna börjar vid samma kant, nära bilden
+      for line in lines:
+         self.text(surface, line, font, topleft=(info.left, y))
+         y += line_height
+      for line in status_lines:
+         self.text(surface, line, status_font, topleft=(info.left, y))
+         y += status_height

@@ -77,7 +77,10 @@ class PygameUI:
    CONSOLE_LINES = 24
    MAX_FRAME_SECONDS = 0.05   # en lång paus (till exempel medan AI:n tänker) blir inget hopp
 
-   WINDOW_SHARE = 0.9   # fönstret tar högst så här stor del av skärmen (plats för aktivitetsfältet)
+   PULSES = 3          # så många gånger ramarna pulserar i början av turen, sedan lyser de stilla
+   PULSE_SPEED = 5     # hur fort de pulserar (radianer per sekund; en puls tar 2π / 5 ≈ 1,3 sekunder)
+
+   WINDOW_SHARE = 0.9  # fönstret tar högst så här stor del av skärmen (plats för aktivitetsfältet)
    FACTION_CHOICE = (340, 510)   # hjältebilden när man väljer fraktion (samma form som HERO i Layout)
 
    # speed: 1.0 = vanlig fart, 0 = inga pauser (används när datorn spelar mot sig själv i tester)
@@ -139,6 +142,7 @@ class PygameUI:
       self.hovered = None        # kortet i handen som är upplyft (musen är över det)
       self.drag = None           # en pågående dragning med musen (se Drag), eller None
       self.moves = []            # de lagliga dragen medan spelaren väljer (för pilens färg)
+      self.pulse_start = None    # när ramarna började pulsera denna tur (None: när spelaren får välja)
 
 
    # Gränssnittets metoder (samma som TerminalUI)
@@ -164,6 +168,8 @@ class PygameUI:
       end_turn = next(move for move in moves if move.ends_turn())
       selected = None   # kortet man har klickat på och som väntar på ett mål
       self.choosing = True
+      if self.pulse_start is None:   # första valet denna tur: nu ska ramarna pulsera
+         self.pulse_start = self.time
       self.moves = moves
       try:
          while True:
@@ -318,6 +324,7 @@ class PygameUI:
    # Händelser
 
    def on_turn_started(self, event):
+      self.pulse_start = None   # ramarna pulserar igen när spelaren får välja i den nya turen
       if self.layout.is_viewer(event.player):
          self.show_banner("Your turn", 1.0)
       else:
@@ -648,7 +655,7 @@ class PygameUI:
       color = self.highlights.get(id(hero))
       if color:
          self.glow(rect, color)
-      self.renderer.hero(self.screen, player, rect)
+      self.renderer.hero(self.screen, player, rect, self.layout.hero_info(player))
       self.red_flash(hero, rect)
       self.remember(hero, rect, rect)
 
@@ -764,9 +771,10 @@ class PygameUI:
          pygame.draw.polygon(self.screen, (0, 0, 0), [p + direction * 2 for p in tip])
          pygame.draw.polygon(self.screen, color, tip)
 
-   # En lysande ram runt något som går att välja. Grön och röd pulserar lugnt, gul (vald) står still.
+   # En lysande ram runt något som går att välja. Grön och röd pulserar några gånger
+   # i början av turen och lyser sedan stilla; gul (vald) står alltid still.
    def glow(self, rect, color, angle=0.0):
-      strength = 1.0 if color == SELECTED else 0.6 + 0.4 * math.sin(self.time * 5)
+      strength = 1.0 if color == SELECTED else self.pulse_strength()
       size = (rect.width + 20, rect.height + 20)
       ring = pygame.Surface(size, pygame.SRCALPHA)
       pygame.draw.rect(ring, (*color, int(90 * strength)), ring.get_rect(), border_radius=20)
@@ -774,6 +782,16 @@ class PygameUI:
       if angle:
          ring = pygame.transform.rotozoom(ring, angle, 1)
       self.screen.blit(ring, ring.get_rect(center=rect.center))
+
+   # Hur starkt ramarna lyser just nu (0,2 till 1,0). Cosinus börjar och slutar på 1,0,
+   # så efter sista pulsen går ramen över i stilla ljus utan att hoppa.
+   def pulse_strength(self):
+      if self.pulse_start is None:
+         return 1.0
+      phase = (self.time - self.pulse_start) * self.PULSE_SPEED
+      if phase >= self.PULSES * 2 * math.pi:
+         return 1.0
+      return 0.6 + 0.4 * math.cos(phase)
 
    # Ett rött sken över en sak som just tog skada
    def red_flash(self, thing, rect):

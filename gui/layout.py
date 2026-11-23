@@ -45,11 +45,16 @@ class Layout:
    CARD_BACK_PIVOT_Y = -890      # mittpunkten ovanför skärmen: kortens mitt hamnar vid y = 10
    CARD_BACK_ANGLE_STEP = 4.0
 
-   HERO = (170, 255)
-   OPPONENT_HERO = (1660, 50)
-   VIEWER_HERO = (1660, 650)
+   # Hjältarna står i de två nischerna i bakgrundsbilden: bilden till vänster i nischen,
+   # namn, ritual och resurs i en spalt till höger om den. Nischernas mitt i bg.png är
+   # ungefär (1700, 285) och (1700, 780), och hyllan mellan dem (1700, 535).
+   HERO = (150, 225)
+   OPPONENT_HERO = (1525, 172)
+   VIEWER_HERO = (1525, 668)
+   HERO_INFO_GAP = 22            # luft mellan bilden och texten (❤️-brickan sticker ut över kanten)
+   HERO_INFO_WIDTH = 170
 
-   END_TURN = pygame.Rect(1640, 470, 210, 66)
+   END_TURN = pygame.Rect(1595, 502, 210, 66)
    HISTORY_X = 20                # listan med senaste drag, längst till vänster
    HISTORY_Y = 60
    HISTORY_ICON = 72
@@ -121,6 +126,11 @@ class Layout:
    def hero(self, player):
       position = self.VIEWER_HERO if self.is_viewer(player) else self.OPPONENT_HERO
       return pygame.Rect(position, self.HERO)
+
+   # Spalten bredvid hjältebilden där namn, ritual och resurs skrivs
+   def hero_info(self, player):
+      hero = self.hero(player)
+      return pygame.Rect(hero.right + self.HERO_INFO_GAP, hero.top, self.HERO_INFO_WIDTH, hero.height)
 
    # Var listan med senaste drag har sin ruta nummer index (0 = överst)
    def history_icon(self, index):
