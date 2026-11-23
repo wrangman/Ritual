@@ -75,11 +75,21 @@ class AttackLine(Effect):
 
 # En ruta mitt på skärmen med en text, till exempel "Your turn".
 # Den glider in från vänster, stannar en stund och glider ut åt höger.
+# lines är texten redan uppdelad i rader. Rutan är minst lika stor som rect,
+# men växer så att all text får plats, och har alltid mitten där rect har sin.
 class Banner(Effect):
-   def __init__(self, text, rect, font, duration=1.0):
+   PADDING = 40   # luft mellan texten och rutans kant
+
+   def __init__(self, lines, rect, font, duration=1.0):
       super().__init__(duration)
-      self.rect = rect
-      self.image = font.render(text, True, (240, 225, 190))
+      self.images = [font.render(line, True, (240, 225, 190)) for line in lines]
+      self.line_height = font.get_linesize()
+      text_width = max(image.get_width() for image in self.images)
+      text_height = self.line_height * len(self.images)
+      width = max(rect.width, text_width + 2 * self.PADDING)
+      height = max(rect.height, text_height + 2 * self.PADDING)
+      self.rect = pygame.Rect(0, 0, width, height)
+      self.rect.center = rect.center
 
    def draw(self, surface):
       fade = min(1.0, self.progress() * 5, (1 - self.progress()) * 4)
@@ -89,8 +99,12 @@ class Banner(Effect):
       box.fill((15, 10, 10, int(210 * fade)))
       pygame.draw.rect(box, (170, 140, 90, int(255 * fade)), box.get_rect(), 3, border_radius=12)
       surface.blit(box, rect)
-      self.image.set_alpha(int(255 * fade))
-      surface.blit(self.image, self.image.get_rect(center=rect.center))
+      # Raderna läggs under varandra, och hela textblocket centreras i rutan
+      top = rect.centery - self.line_height * len(self.images) / 2
+      for i, image in enumerate(self.images):
+         image.set_alpha(int(255 * fade))
+         center = (rect.centerx, int(top + self.line_height * (i + 0.5)))
+         surface.blit(image, image.get_rect(center=center))
 
 
 # En bild som tonar bort och krymper, till exempel porträttet av ett kort som dör

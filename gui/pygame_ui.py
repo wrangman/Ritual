@@ -386,7 +386,10 @@ class PygameUI:
          self.effects.append(AttackLine(self.rect_of(start).center, self.rect_of(end).center, color))
 
    def show_banner(self, text, seconds):
-      self.effects.append(Banner(text, self.layout.BANNER, self.renderer.font(48, bold=True), seconds))
+      font = self.renderer.font(48, bold=True)
+      # Långa texter delas i rader, så att rutan aldrig blir bredare än BANNER_MAX_WIDTH
+      lines = self.renderer.wrap(text, font, self.layout.BANNER_MAX_WIDTH - 2 * Banner.PADDING)
+      self.effects.append(Banner(lines, self.layout.BANNER, font, seconds))
       self.wait(seconds)
 
 

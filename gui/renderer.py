@@ -189,11 +189,18 @@ class Renderer:
 
    # Text med svart kontur runt om (för siffror på brickor)
    def outlined_text(self, surface, text, font, color, center):
-      outline = font.render(text, True, (0, 0, 0))
-      for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)):
-         surface.blit(outline, outline.get_rect(center=(center[0] + dx, center[1] + dy)))
       image = font.render(text, True, color)
-      surface.blit(image, image.get_rect(center=center))
+      outline = font.render(text, True, (0, 0, 0))
+      # Den renderade bilden har plats för bokstäver som går under raden (g, p, y) och
+      # över den (accenter). Siffror använder inte den platsen, så om hela bilden
+      # centreras hamnar siffran för högt. Därför centreras de synliga pixlarna
+      # (get_bounding_rect) i stället.
+      ink = image.get_bounding_rect()
+      x = round(center[0] - ink.centerx)
+      y = round(center[1] - ink.centery)
+      for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)):
+         surface.blit(outline, (x + dx, y + dy))
+      surface.blit(image, (x, y))
 
    # Porträttbilden, eller en mörk ruta med namnet om bilden inte finns än
    def portrait_image(self, surface, card, rect):

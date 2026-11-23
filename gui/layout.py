@@ -57,7 +57,8 @@ class Layout:
 
    PREVIEW = pygame.Rect(110, 300, 260, 390)              # stort kort när musen är över ett kort
    SHOWCASE = pygame.Rect(BOARD_CENTER_X - 130, 290, 260, 390)   # kortet som just spelades
-   BANNER = pygame.Rect(BOARD_CENTER_X - 360, 470, 720, 110)
+   BANNER = pygame.Rect(BOARD_CENTER_X - 360, 470, 720, 110)   # minsta storleken; växer med texten
+   BANNER_MAX_WIDTH = 1200                                       # bredare text delas i rader
 
    def __init__(self, viewer):
       self.viewer = viewer   # spelaren vid skärmen: hennes sida är nederst, hennes hand syns
