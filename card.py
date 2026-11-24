@@ -10,8 +10,6 @@ __author__ = "Johan Wrangö"
 __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
-#TODO: Image!!
-
 from enum import Enum
 from buff import BuffList
 

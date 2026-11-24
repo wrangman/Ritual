@@ -10,7 +10,6 @@ __version__ = "0.0.1"
 __email__ = "johan.wrango@ga.dbgy.se"
 
 import random
-from hero import Hero
 from card import SpellCard, RitualCard, Special
 from deck import Deck
 
