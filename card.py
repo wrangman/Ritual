@@ -164,6 +164,12 @@ class CreatureCard(Card):
       self.health = health
       self.ritual = ritual       # ☩ som hjälten får i början av varje egen tur, så länge kortet ligger kvar
       self.max_health = health   # läkning kan aldrig ge mer än så här (som i Hearthstone)
+      # Grundvärdena, som de står tryckta på kortet. Under matchen kan värdena ändras
+      # för alltid (Wither, DEVOUR), men när kortet dör blir det som nytt igen (reset).
+      self.base_attack = attack
+      self.base_magic = magic
+      self.base_health = health
+      self.base_ritual = ritual
       self.buffs = BuffList()    # tillfälliga ändringar, till exempel från Terror eller Whispered Hex
       self.ready = False              # har legat på brädet sedan förra turen (summoning sickness)
       self.attacked_this_turn = False # varje kort får anfalla en gång per tur
@@ -203,6 +209,19 @@ class CreatureCard(Card):
    def clear_buffs(self):
       self.buffs.clear()
 
+   # Ett kort som dör blir som det står tryckt på kortet igen. Alla ändringar försvinner,
+   # både buffar och sådant som var "för alltid" (Wither, DEVOUR, SACRIFICE).
+   # Som i Magic: The Gathering (regel 400.7): ett kort som byter zon blir ett nytt
+   # objekt som inte minns något. Då visar gravhögen kortets riktiga värden (inte ❤️ 0),
+   # och ett kort som återupplivas eller tas tillbaka till handen är helt.
+   def reset(self):
+      self.attack = self.base_attack
+      self.magic = self.base_magic
+      self.health = self.base_health
+      self.max_health = self.base_health
+      self.ritual = self.base_ritual
+      self.clear_buffs()
+
    # Korta ord för kortets status, till exempel ["Guard", "Can't attack"]
    def statuses(self):
       words = []
@@ -237,10 +256,6 @@ class CreatureCard(Card):
    # Läker, men aldrig över max_health
    def restore_health(self, amount):
       self.health = min(self.health + amount, self.max_health)
-
-   # Ett återupplivat kort kommer tillbaka med full health
-   def restore_full_health(self):
-      self.health = self.max_health
 
    # En buff som höjer både health och max_health
    def increase_health(self, amount):

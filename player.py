@@ -77,9 +77,9 @@ class Player:
    # Gäller alla dödsfall, även när man offrar sitt eget kort. Alla dödsfall går igenom
    # den här metoden, så regeln står bara här. Under Seal of Apep gör lose_ritual ingenting.
    def kill_card(self, card):
-      self.hero.lose_ritual(card.get_ritual())   # läses innan buffarna tas bort
+      self.hero.lose_ritual(card.get_ritual())   # läses innan kortet återställs
       self.army.remove(card)
-      card.clear_buffs()
+      card.reset()   # i gravhögen är kortet som det står tryckt igen
       self.graveyard.append(card)
 
    # Tar bort buffarna som går ut, på alla kort i armén och på hjälten.
@@ -244,8 +244,8 @@ class Player:
          if card.get_special() == Special.SACRIFICE and self.army:
             self.pass_on_strength(card, random.choice(self.army))
 
-   # SACRIFICE: det döda kortet ger sin ❤️ max health till receiver för alltid.
-   # Det ger max health, inte den health som var kvar (den är 0 när kortet har dött).
+   # SACRIFICE: det döda kortet ger sin ❤️ health till receiver för alltid.
+   # Kortet har redan återställts när det dog (reset), så det ger sin tryckta health.
    # Samma regel när kortet offras frivilligt (Game.sacrifice), då väljer spelaren receiver.
    def pass_on_strength(self, card, receiver):
       receiver.increase_health(card.get_max_health())

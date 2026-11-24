@@ -224,9 +224,7 @@ class ReviveRandom(Effect):
             dead_cards.append(card)
       if not dead_cards:
          return   # inget att återuppliva
-      card = random.choice(dead_cards)
-      card.restore_full_health()
-      caster.revive_card(card)
+      caster.revive_card(random.choice(dead_cards))   # kortet är redan helt (reset när det dog)
 
 
 # Trollar fram ett spöke: en figur som inte fanns i leken (en "token", som Mirror Image
@@ -290,10 +288,7 @@ class ReturnRandomToHand(Effect):
             cards.append(card)
       if not cards:
          return   # inget att hämta
-      card = random.choice(cards)
-      if isinstance(card, CreatureCard):
-         card.restore_full_health()
-      caster.restore_card(card)
+      caster.restore_card(random.choice(cards))   # kortet är redan helt (reset när det dog)
 
 
 # Titta på de översta korten i leken och ta ett till handen. Resten läggs sist i leken.
